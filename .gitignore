@@ -1,0 +1,53 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Next.js / Node
+frontend/node_modules/
+frontend/.next/
+node_modules/
+.next/
+
+# Build output
+dist/
+build/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
+
+# Generated reports
+*.pdf
+*.docx
+
+# Python testing/cache
+.pytest_cache/
+.mypy_cache/
+
+# Coverage
+.coverage
+htmlcov/
