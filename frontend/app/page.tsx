@@ -3725,7 +3725,7 @@ export default function Home() {
 
     try {
       if (phaseType !== "Liquid") {
-        throw new Error("Pump sizing version 1 is available for liquid systems only.");
+        throw new Error("Pump sizing for liquid systems only.");
       }
 
       const sourcePressure = Number(pumpSourcePressure);

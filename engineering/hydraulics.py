@@ -971,6 +971,14 @@ def solve_line(
         * 100000.0
     )
 
+    # Performance fast path: manual liquid properties are constant by definition.
+    # A pipe therefore does not need to be split into many pressure-marching
+    # steps; one Darcy-Weisbach evaluation gives the identical result.
+    constant_property_liquid = (
+        str(fluid_config.get("phase_type", "Liquid")).lower() == "liquid"
+        and bool(fluid_config.get("use_manual_properties", True))
+    )
+
     mass_flow_kg_s = calculate_mass_flow(
         flow_value=flow_value,
         flow_unit=flow_unit,
@@ -1091,18 +1099,22 @@ def solve_line(
             # This allows pressure-dependent gas properties
             # to be recalculated along the pipe.
 
-            number_steps = max(
-                5,
-                min(
-                    200,
-                    int(
-                        max(
-                            length_m,
-                            1.0,
-                        )
-                        * 4
+            number_steps = (
+                1
+                if constant_property_liquid
+                else max(
+                    5,
+                    min(
+                        200,
+                        int(
+                            max(
+                                length_m,
+                                1.0,
+                            )
+                            * 4
+                        ),
                     ),
-                ),
+                )
             )
 
             dx = (
@@ -1785,6 +1797,19 @@ def build_system_curve(
             "Reference liquid density must be greater than zero."
         )
 
+    # A liquid system curve can safely reuse one reference liquid state across
+    # all flow points. This avoids thousands of repeated property evaluations
+    # while retaining the same deterministic hydraulic equations. The normal
+    # design-point solve below still uses the original fluid configuration.
+    curve_fluid_config = dict(fluid_config)
+    curve_fluid_config.update({
+        "phase_type": "Liquid",
+        "use_manual_properties": True,
+        "density_kg_m3": reference_density,
+        "dynamic_viscosity_pa_s": float(inlet_state["mu"]),
+        "vapor_pressure_bar_a": float(inlet_state.get("vp") or 0.0) / 100000.0,
+    })
+
     max_flow_value = (
         design_flow_value
         * max_flow_factor
@@ -1823,7 +1848,7 @@ def build_system_curve(
 
                 if dz_m != 0.0:
                     state = get_fluid_state(
-                        fluid_config,
+                        curve_fluid_config,
                         pressure_pa,
                     )
 
@@ -1852,7 +1877,7 @@ def build_system_curve(
                 )
 
                 state = get_fluid_state(
-                    fluid_config,
+                    curve_fluid_config,
                     pressure_pa,
                 )
 
@@ -1945,7 +1970,7 @@ def build_system_curve(
 
         else:
             solved = solve_line(
-                fluid_config=fluid_config,
+                fluid_config=curve_fluid_config,
                 flow_value=flow_value,
                 flow_unit=flow_unit,
                 inlet_pressure_bar_a=(
@@ -2086,6 +2111,11 @@ def build_system_curve(
             ),
             (
                 "Version 1 is limited to liquid systems."
+            ),
+            (
+                "System-curve flow points use liquid properties frozen at "
+                "the inlet reference condition for efficient repeated solves; "
+                "the design-point calculation retains the original fluid model."
             ),
             (
                 "Known Equipment ΔP is held constant "

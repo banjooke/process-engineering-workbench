@@ -203,7 +203,7 @@ def _make_profile_chart(payload: dict[str, Any], base_name: str) -> Path | None:
     labels = [line.get_label() for line in lines]
     ax1.legend(lines, labels, loc="best")
     fig.tight_layout()
-    fig.savefig(path, dpi=180, bbox_inches="tight")
+    fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
 
@@ -645,7 +645,7 @@ def _make_system_curve_chart(payload: dict[str, Any], base_name: str) -> Path | 
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
     fig.tight_layout()
-    fig.savefig(path, dpi=180, bbox_inches="tight")
+    fig.savefig(path, dpi=120, bbox_inches="tight")
     plt.close(fig)
     return path
 
