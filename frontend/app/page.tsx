@@ -7,6 +7,8 @@ import {
   useState,
 } from "react";
 
+import UserAccount from "@/components/UserAccount";
+
 import {
   CartesianGrid,
   Legend,
@@ -4786,21 +4788,24 @@ export default function Home() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActivePage("assistant");
-              setWizardStep("tasks");
-              setEngineeringTask(null);
-              setAnalysisType(null);
-              window.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
-            title="Return to the Workbench home"
-          >
-            Home
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+  <button
+    type="button"
+    onClick={() => {
+      setActivePage("assistant");
+      setWizardStep("tasks");
+      setEngineeringTask(null);
+      setAnalysisType(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }}
+    className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
+    title="Return to the Workbench home"
+  >
+    Home
+  </button>
 
+  <UserAccount />
+</div>
         </div>
 
       </header>
