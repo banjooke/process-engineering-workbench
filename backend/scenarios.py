@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from sqlmodel import Session, select
 
 from database.db import get_session
 from database.models import Project, Scenario
+from backend.auth import get_current_user_id
 
 
 router = APIRouter(tags=["Scenarios"])
@@ -47,8 +49,10 @@ class ScenarioResponse(BaseModel):
     updated_at: datetime
 
 
-def _require_project(project_id: int, session: Session) -> Project:
-    project = session.get(Project, project_id)
+def _require_project(project_id: int, user_id: UUID, session: Session) -> Project:
+    project = session.exec(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    ).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
     return project
@@ -96,6 +100,7 @@ def _response(scenario: Scenario) -> ScenarioResponse:
 def create_scenario(
     project_id: int,
     payload: ScenarioPayload,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
     """
@@ -105,7 +110,7 @@ def create_scenario(
     and does not overwrite the project's HydraulicModel. Every call to POST
     creates a separate Scenario record linked to the same project.
     """
-    project = _require_project(project_id, session)
+    project = _require_project(project_id, user_id, session)
 
     scenario = Scenario(
         project_id=project_id,
@@ -135,9 +140,10 @@ def create_scenario(
 )
 def list_scenarios(
     project_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    _require_project(project_id, session)
+    _require_project(project_id, user_id, session)
 
     scenarios = session.exec(
         select(Scenario)
@@ -155,8 +161,10 @@ def list_scenarios(
 def get_scenario(
     project_id: int,
     scenario_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
+    _require_project(project_id, user_id, session)
     scenario = _get_scenario(project_id, scenario_id, session)
     return _response(scenario)
 
@@ -169,9 +177,10 @@ def update_scenario(
     project_id: int,
     scenario_id: int,
     payload: ScenarioPayload,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    project = _require_project(project_id, session)
+    project = _require_project(project_id, user_id, session)
     scenario = _get_scenario(project_id, scenario_id, session)
 
     scenario.name = payload.name.strip()
@@ -201,9 +210,10 @@ def update_scenario(
 def delete_scenario(
     project_id: int,
     scenario_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    project = _require_project(project_id, session)
+    project = _require_project(project_id, user_id, session)
     scenario = _get_scenario(project_id, scenario_id, session)
 
     deleted_id = int(scenario.id)

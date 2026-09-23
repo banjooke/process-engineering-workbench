@@ -8,6 +8,7 @@ import {
 } from "react";
 
 import UserAccount from "@/components/UserAccount";
+import { createClient } from "@/lib/supabase/client";
 
 import {
   CartesianGrid,
@@ -20,6 +21,46 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+
+
+async function apiFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {}
+): Promise<Response> {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const headers = new Headers(init.headers);
+  if (session?.access_token) {
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+  }
+
+  const method = (init.method ?? "GET").toUpperCase();
+  const attempts = method === "GET" ? 2 : 1;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await window.fetch(input, { ...init, headers });
+      if (attempt + 1 < attempts && response.status >= 500) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2500));
+        continue;
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt + 1 < attempts) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2500));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("Unable to connect to the engineering server.");
+}
 
 
 // ============================================================
@@ -980,7 +1021,7 @@ export default function Home() {
   // ========================================================
 
   async function refreshProjects(selectNewest = false) {
-    const response = await fetch(`${API_BASE_URL}/projects`);
+    const response = await apiFetch(`${API_BASE_URL}/projects`);
 
     if (!response.ok) {
       throw new Error(`Unable to load projects (${response.status}).`);
@@ -1009,7 +1050,7 @@ export default function Home() {
     setProjectStatus("Creating project…");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/projects`, {
+      const response = await apiFetch(`${API_BASE_URL}/projects`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1115,7 +1156,7 @@ export default function Home() {
     setProjectStatus("Deleting project…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}`,
         { method: "DELETE" }
       );
@@ -1200,7 +1241,7 @@ export default function Home() {
     setProjectStatus("Saving hydraulic model…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/hydraulics`,
         {
           method: "PUT",
@@ -1301,7 +1342,7 @@ export default function Home() {
     setProjectStatus("Loading hydraulic model…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/hydraulics`
       );
 
@@ -1314,7 +1355,7 @@ export default function Home() {
         // Older / scenario-based pressure-drop projects may not have a separate
         // project-level HydraulicModel row. Reuse the most recently updated
         // saved scenario instead of making the user rebuild the hydraulic system.
-        const scenariosResponse = await fetch(
+        const scenariosResponse = await apiFetch(
           `${API_BASE_URL}/projects/${selectedProjectId}/scenarios`
         );
 
@@ -1468,7 +1509,7 @@ export default function Home() {
       return [];
     }
 
-    const response = await fetch(`${API_BASE_URL}/projects/${projectId}/scenarios`);
+    const response = await apiFetch(`${API_BASE_URL}/projects/${projectId}/scenarios`);
 
     if (!response.ok) {
       throw new Error(`Unable to load scenarios (${response.status}).`);
@@ -1591,7 +1632,7 @@ export default function Home() {
         ? `${API_BASE_URL}/projects/${selectedProjectId}/scenarios/${selectedScenarioId}`
         : `${API_BASE_URL}/projects/${selectedProjectId}/scenarios`;
 
-      const response = await fetch(url, {
+      const response = await apiFetch(url, {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -1643,7 +1684,7 @@ export default function Home() {
         newScenarioDescription.trim() || null
       );
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/scenarios`,
         {
           method: "POST",
@@ -1709,7 +1750,7 @@ export default function Home() {
         selectedScenario.description
       );
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/scenarios/${selectedScenarioId}`,
         {
           method: "PUT",
@@ -1841,7 +1882,7 @@ export default function Home() {
     setScenarioStatus("Loading scenario…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/scenarios/${selectedScenarioId}`
       );
 
@@ -1878,7 +1919,7 @@ export default function Home() {
     setScenarioStatus("Loading scenario…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/scenarios/${scenario.id}`
       );
 
@@ -1938,7 +1979,7 @@ export default function Home() {
     setScenarioStatus("Deleting scenario…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/projects/${selectedProjectId}/scenarios/${scenario.id}`,
         { method: "DELETE" }
       );
@@ -2099,7 +2140,7 @@ export default function Home() {
 
         if (!props) {
           const propertyPressure = Number(scenario.property_reference_pressure_bar_a ?? 1.01325);
-          const response = await fetch(`${API_BASE_URL}/fluids/properties`, {
+          const response = await apiFetch(`${API_BASE_URL}/fluids/properties`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -2275,7 +2316,7 @@ export default function Home() {
           const motorMargin = Number(pumpMeta.motor_margin ?? 1.10);
           const pumpAfterIndex = Number(pumpMeta.pump_after_element_index ?? 0);
 
-          const response = await fetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
+          const response = await apiFetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -2334,7 +2375,7 @@ export default function Home() {
             error: null,
           });
         } else {
-          const response = await fetch(`${API_BASE_URL}/hydraulics/solve-line`, {
+          const response = await apiFetch(`${API_BASE_URL}/hydraulics/solve-line`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -2484,15 +2525,15 @@ export default function Home() {
           fittingsResponse,
         ] =
           await Promise.all([
-            fetch(
+            apiFetch(
               `${API_BASE_URL}/fluids`
             ),
 
-            fetch(
+            apiFetch(
               `${API_BASE_URL}/piping/catalog`
             ),
 
-            fetch(
+            apiFetch(
               `${API_BASE_URL}/fittings`
             ),
           ]);
@@ -2582,7 +2623,7 @@ export default function Home() {
       setFluidSearchLoading(true);
 
       try {
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE_URL}/fluids/search?q=${encodeURIComponent(query)}&limit=30`
         );
 
@@ -2643,7 +2684,7 @@ export default function Home() {
     try {
 
       const response =
-        await fetch(
+        await apiFetch(
           `${API_BASE_URL}/fluids/properties`,
           {
             method:
@@ -3151,7 +3192,7 @@ export default function Home() {
       const overrideEnabled =
         element.fittingOverrideEnabled === "true";
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/fittings/calculate-k`,
         {
           method: "POST",
@@ -3550,7 +3591,7 @@ export default function Home() {
           );
         }
 
-        const propertiesResponse = await fetch(
+        const propertiesResponse = await apiFetch(
           `${API_BASE_URL}/fluids/properties`,
           {
             method: "POST",
@@ -3644,7 +3685,7 @@ export default function Home() {
                 gamma: Number(gamma),
               };
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/hydraulics/solve-line`,
         {
           method: "POST",
@@ -3760,7 +3801,7 @@ export default function Home() {
         throw new Error("Select a valid pump location in the hydraulic line.");
       }
 
-      const response = await fetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
+      const response = await apiFetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3835,7 +3876,7 @@ export default function Home() {
         throw new Error("Number of system-curve points must be an integer from 2 to 101.");
       }
 
-      const response = await fetch(`${API_BASE_URL}/hydraulics/system-curve`, {
+      const response = await apiFetch(`${API_BASE_URL}/hydraulics/system-curve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -3993,7 +4034,7 @@ export default function Home() {
             );
           }
 
-          const scenariosResponse = await fetch(
+          const scenariosResponse = await apiFetch(
             `${API_BASE_URL}/projects/${selectedProjectId}/scenarios`
           );
 
@@ -4044,7 +4085,7 @@ export default function Home() {
             const fluidConfig = await buildSolveFluidConfigForScenario(scenario);
             const apiElements = buildApiElementsForScenario(scenario.elements);
 
-            const pumpResponse = await fetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
+            const pumpResponse = await apiFetch(`${API_BASE_URL}/hydraulics/pump-sizing`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -4099,7 +4140,7 @@ export default function Home() {
             });
           }
 
-          const response = await fetch(
+          const response = await apiFetch(
             `${API_BASE_URL}/reports/pump-sizing/project/${reportFormat}`,
             {
               method: "POST",
@@ -4140,7 +4181,7 @@ export default function Home() {
           throw new Error("Calculate the pump duty before downloading a pump-sizing report.");
         }
 
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE_URL}/reports/pump-sizing/${reportFormat}`,
           {
             method: "POST",
@@ -4234,7 +4275,7 @@ export default function Home() {
 
         // Always reload from the backend so the report cannot accidentally use
         // a stale React scenario list.
-        const scenariosResponse = await fetch(
+        const scenariosResponse = await apiFetch(
           `${API_BASE_URL}/projects/${selectedProjectId}/scenarios`
         );
 
@@ -4258,7 +4299,7 @@ export default function Home() {
           const fluidConfig = await buildSolveFluidConfigForScenario(scenario);
           const apiElements = buildApiElementsForScenario(scenario.elements);
 
-          const solveResponse = await fetch(`${API_BASE_URL}/hydraulics/solve-line`, {
+          const solveResponse = await apiFetch(`${API_BASE_URL}/hydraulics/solve-line`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -4302,7 +4343,7 @@ export default function Home() {
           });
         }
 
-        const response = await fetch(
+        const response = await apiFetch(
           `${API_BASE_URL}/reports/hydraulics/project/${format}`,
           {
             method: "POST",
@@ -4344,7 +4385,7 @@ export default function Home() {
         throw new Error("Solve the hydraulic line before generating a report.");
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/reports/hydraulics/${format}`,
         {
           method: "POST",
@@ -4414,7 +4455,7 @@ export default function Home() {
     setPromptFeedback("Interpreting engineering problem…");
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `${API_BASE_URL}/assistant/interpret-hydraulics`,
         {
           method: "POST",
@@ -4707,7 +4748,7 @@ export default function Home() {
           );
         }
 
-        const kResponse = await fetch(`${API_BASE_URL}/fittings/calculate-k`, {
+        const kResponse = await apiFetch(`${API_BASE_URL}/fittings/calculate-k`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

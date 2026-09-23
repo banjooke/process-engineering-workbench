@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,6 +11,7 @@ from sqlmodel import Session, select
 
 from database.db import get_session
 from database.models import Project, HydraulicModel
+from backend.auth import get_current_user_id
 
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -91,9 +93,11 @@ def _hydraulic_to_dict(model: HydraulicModel) -> dict[str, Any]:
 @router.post("", response_model=ProjectRead)
 def create_project(
     request: ProjectCreate,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
     project = Project(
+        user_id=user_id,
         name=request.name.strip(),
         description=request.description.strip() if request.description else None,
     )
@@ -104,9 +108,14 @@ def create_project(
 
 
 @router.get("", response_model=list[ProjectRead])
-def list_projects(session: Session = Depends(get_session)):
+def list_projects(
+    user_id: UUID = Depends(get_current_user_id),
+    session: Session = Depends(get_session),
+):
     projects = session.exec(
-        select(Project).order_by(Project.updated_at.desc(), Project.id.desc())
+        select(Project)
+        .where(Project.user_id == user_id)
+        .order_by(Project.updated_at.desc(), Project.id.desc())
     ).all()
     return [_project_to_dict(project) for project in projects]
 
@@ -114,9 +123,12 @@ def list_projects(session: Session = Depends(get_session)):
 @router.get("/{project_id}", response_model=ProjectRead)
 def get_project(
     project_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    project = session.get(Project, project_id)
+    project = session.exec(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    ).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
     return _project_to_dict(project)
@@ -126,9 +138,12 @@ def get_project(
 def save_project_hydraulics(
     project_id: int,
     request: HydraulicModelPayload,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    project = session.get(Project, project_id)
+    project = session.exec(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    ).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
 
@@ -174,9 +189,12 @@ def save_project_hydraulics(
 @router.get("/{project_id}/hydraulics", response_model=HydraulicModelRead)
 def get_project_hydraulics(
     project_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    project = session.get(Project, project_id)
+    project = session.exec(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    ).first()
     if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
 

@@ -66,6 +66,13 @@ app = FastAPI(
 app.include_router(projects_router)
 app.include_router(scenarios_router)
 app.include_router(project_delete_router)
+
+
+@app.get("/health", tags=["Operations"])
+def health_check():
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()

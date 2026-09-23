@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel import Session, select
+from uuid import UUID
 
 from database.db import get_session
+from database.models import HydraulicModel, Project, Scenario
+from backend.auth import get_current_user_id
 
 
 router = APIRouter(tags=["Projects"])
@@ -11,42 +13,32 @@ router = APIRouter(tags=["Projects"])
 @router.delete("/projects/{project_id}")
 def delete_project(
     project_id: int,
+    user_id: UUID = Depends(get_current_user_id),
     session: Session = Depends(get_session),
 ):
-    """Delete one project and its dependent hydraulic model/scenarios.
+    """Delete one authenticated user's project and its dependent records."""
+    project = session.exec(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    ).first()
 
-    This version deliberately uses the existing SQLite/SQLModel table names
-    rather than importing Project/HydraulicModel/Scenario classes here. That
-    avoids circular/import/type-checking problems in a separate router file.
-    """
-
-    # Confirm that the project exists and keep its name for the response.
-    project_row = session.execute(
-        text("SELECT id, name FROM project WHERE id = :project_id"),
-        {"project_id": project_id},
-    ).mappings().first()
-
-    if project_row is None:
+    if project is None:
         raise HTTPException(status_code=404, detail="Project not found.")
 
-    project_name = project_row["name"]
+    project_name = project.name
 
     try:
-        # Delete child records first so the project can be removed safely.
-        scenario_result = session.execute(
-            text("DELETE FROM scenario WHERE project_id = :project_id"),
-            {"project_id": project_id},
-        )
+        scenarios = session.exec(
+            select(Scenario).where(Scenario.project_id == project_id)
+        ).all()
+        hydraulic_models = session.exec(
+            select(HydraulicModel).where(HydraulicModel.project_id == project_id)
+        ).all()
 
-        hydraulic_result = session.execute(
-            text("DELETE FROM hydraulicmodel WHERE project_id = :project_id"),
-            {"project_id": project_id},
-        )
-
-        session.execute(
-            text("DELETE FROM project WHERE id = :project_id"),
-            {"project_id": project_id},
-        )
+        for scenario in scenarios:
+            session.delete(scenario)
+        for hydraulic_model in hydraulic_models:
+            session.delete(hydraulic_model)
+        session.delete(project)
 
         session.commit()
 
@@ -61,6 +53,6 @@ def delete_project(
         "status": "deleted",
         "project_id": project_id,
         "project_name": project_name,
-        "deleted_scenarios": scenario_result.rowcount,
-        "deleted_hydraulic_models": hydraulic_result.rowcount,
+        "deleted_scenarios": len(scenarios),
+        "deleted_hydraulic_models": len(hydraulic_models),
     }
