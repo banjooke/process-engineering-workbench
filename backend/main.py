@@ -13,6 +13,8 @@ from engineering.hydraulics import (
     calculate_pressure_drop,
     solve_line,
     build_system_curve,
+    build_pump_system_curve,
+    freeze_pump_fluid_properties,
     size_pump_duty,
 )
 from engineering.fluids import (
@@ -215,6 +217,7 @@ class LineSolveInput(BaseModel):
 
 
 class SystemCurveInput(BaseModel):
+    pump_system: bool = False
     fluid_config: FluidConfig
     design_flow_value: float = Field(gt=0)
     flow_unit: str = "m³/h"
@@ -609,6 +612,17 @@ def hydraulics_system_curve(request: SystemCurveInput):
                 "System-curve generation is currently limited to liquid systems."
             )
 
+        if request.pump_system:
+            return build_pump_system_curve(
+                fluid_config=fluid_config,
+                design_flow_value=request.design_flow_value,
+                flow_unit=request.flow_unit,
+                source_pressure_bar_a=request.inlet_pressure_bar_a,
+                elements=[element.model_dump(exclude_none=True) for element in request.elements],
+                max_flow_factor=request.max_flow_factor,
+                number_points=request.number_points,
+            )
+
         return build_system_curve(
             fluid_config=fluid_config,
             design_flow_value=request.design_flow_value,
@@ -664,7 +678,7 @@ def hydraulics_pump_sizing(request: PumpSizingInput):
 @app.post("/reports/pump-sizing/pdf", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_pdf_report(request: PumpEngineeringReportRequest):
     try:
-        report_path = create_pump_pdf_report(request.model_dump())
+        report_path = create_pump_pdf_report(_prepare_pump_report_payload(request.model_dump()))
         return FileResponse(path=str(report_path), media_type="application/pdf", filename="pump_sizing_engineering_report.pdf")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pump PDF report generation failed: {exc}") from exc
@@ -673,7 +687,7 @@ def pump_sizing_pdf_report(request: PumpEngineeringReportRequest):
 @app.post("/reports/pump-sizing/docx", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_docx_report(request: PumpEngineeringReportRequest):
     try:
-        report_path = create_pump_docx_report(request.model_dump())
+        report_path = create_pump_docx_report(_prepare_pump_report_payload(request.model_dump()))
         return FileResponse(path=str(report_path), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename="pump_sizing_engineering_report.docx")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pump Word report generation failed: {exc}") from exc
@@ -707,60 +721,57 @@ def hydraulic_docx_report(request: EngineeringReportRequest):
 
 
 
+def _prepare_pump_report_payload(payload: dict[str, Any], include_curve: bool = False) -> dict[str, Any]:
+    """Use one source state for report duty and curve, including direct API callers."""
+    fluid_config = payload.get("fluid_config", {}) or {}
+    frozen = freeze_pump_fluid_properties(fluid_config, float(payload["source_pressure_bar_a"]))
+    payload["fluid_config"] = frozen
+    payload["result"] = size_pump_duty(
+        fluid_config=frozen, design_flow_value=float(payload["flow_value"]),
+        flow_unit=payload["flow_unit"],
+        source_pressure_bar_a=float(payload["source_pressure_bar_a"]),
+        destination_pressure_bar_a=float(payload["destination_pressure_bar_a"]),
+        elements=payload["elements"], pump_efficiency=payload["pump_efficiency"],
+        motor_margin=payload["motor_margin"],
+        pump_after_element_index=payload.get("pump_after_element_index", 0),
+    )
+    if include_curve or payload.get("system_curve"):
+        settings = fluid_config.get("system_curve", {}) or payload.get("system_curve") or {}
+        try:
+            max_factor = float(settings.get("max_flow_factor", 1.5))
+        except (TypeError, ValueError):
+            max_factor = 1.5
+        try:
+            # Project exports retain their existing cost bound; current reports
+            # preserve the interactive curve's requested resolution.
+            minimum_points, maximum_points = (5, 21) if include_curve else (2, 101)
+            points = max(minimum_points, min(int(settings.get("number_points", 21)), maximum_points))
+        except (TypeError, ValueError):
+            points = 21
+        try:
+            payload["system_curve"] = build_pump_system_curve(
+                fluid_config=frozen, design_flow_value=float(payload["flow_value"]),
+                flow_unit=payload["flow_unit"],
+                source_pressure_bar_a=float(payload["source_pressure_bar_a"]),
+                elements=payload["elements"], max_flow_factor=max_factor, number_points=points,
+            )
+        except Exception as exc:
+            payload["system_curve"] = None
+            payload["result"].setdefault("warnings", []).append({
+                "code": "SYSTEM_CURVE_REPORT",
+                "message": f"System curve could not be generated for this report: {exc}",
+            })
+    return payload
+
+
 def _prepare_pump_project_report_payload(
     request: PumpProjectScenarioReportRequest,
 ) -> dict[str, Any]:
     payload = request.model_dump()
-
-    for scenario in payload.get("scenarios", []):
-        if scenario.get("system_curve"):
-            continue
-
-        fluid_config = scenario.get("fluid_config", {}) or {}
-        curve_settings = fluid_config.get("system_curve", {}) or {}
-
-        try:
-            max_flow_factor = float(curve_settings.get("max_flow_factor", 1.5))
-        except (TypeError, ValueError):
-            max_flow_factor = 1.5
-
-        try:
-            number_points = int(curve_settings.get("number_points", 21))
-        except (TypeError, ValueError):
-            number_points = 21
-
-        # Keep project-report generation bounded while retaining a smooth,
-        # solver-generated engineering curve.
-        number_points = max(5, min(number_points, 21))
-
-        try:
-            scenario["system_curve"] = build_system_curve(
-                fluid_config=fluid_config,
-                design_flow_value=float(scenario["flow_value"]),
-                flow_unit=str(scenario["flow_unit"]),
-                # Computational pressure datum only. System-curve reporting uses
-                # hydraulic head, not this artificial absolute pressure.
-                inlet_pressure_bar_a=1000.0,
-                elements=scenario.get("elements", []) or [],
-                max_flow_factor=max_flow_factor,
-                number_points=number_points,
-            )
-        except Exception as curve_exc:
-            # Do not fail the entire engineering report because one chart could
-            # not be generated. Keep the deterministic pump/NPSHa results and
-            # make the omission auditable in the scenario warnings.
-            scenario["system_curve"] = None
-            result = scenario.get("result", {}) or {}
-            warnings = list(result.get("warnings", []) or [])
-            warnings.append(
-                {
-                    "code": "SYSTEM_CURVE_REPORT",
-                    "message": f"System curve could not be generated for this report: {curve_exc}",
-                }
-            )
-            result["warnings"] = warnings
-            scenario["result"] = result
-
+    payload["scenarios"] = [
+        _prepare_pump_report_payload(scenario, include_curve=True)
+        for scenario in payload["scenarios"]
+    ]
     return payload
 
 

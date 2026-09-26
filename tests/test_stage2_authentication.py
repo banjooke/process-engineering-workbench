@@ -56,6 +56,7 @@ WORK_RESULTS = {
     'classify_flow': 'Laminar', 'engineering_friction_factor': (0.064, 'Laminar: 64/Re'),
     'calculate_pressure_drop': 100.0, 'solve_line': {},
     'build_system_curve': {}, 'size_pump_duty': {},
+    'freeze_pump_fluid_properties': FLUID, 'build_pump_system_curve': {},
 }
 for _, _, function in CASES:
     if function.startswith('create_'):

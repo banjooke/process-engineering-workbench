@@ -2133,6 +2133,81 @@ def build_system_curve(
 # PUMP DUTY SIZING
 # ============================================================
 
+def freeze_pump_fluid_properties(
+    fluid_config: dict[str, Any], source_pressure_bar_a: float,
+) -> dict[str, Any]:
+    """Resolve one real source state before any computational pressure is used."""
+    if str(fluid_config.get("phase_type", "Liquid")).lower() != "liquid":
+        raise ValueError("Pump calculations require liquid properties.")
+    if not math.isfinite(source_pressure_bar_a) or source_pressure_bar_a <= 0:
+        raise ValueError("Source pressure must be a positive absolute pressure.")
+    # Evaluate the real liquid properties at the actual source boundary.
+    source_state = get_fluid_state(
+        fluid_config=fluid_config,
+        pressure_pa=source_pressure_bar_a * 100000.0,
+    )
+    if source_state is None:
+        raise ValueError("Unable to evaluate liquid properties at the source boundary.")
+
+    density_kg_m3 = float(source_state["rho"])
+    viscosity_pa_s = float(source_state["mu"])
+    source_vapor_pressure = source_state.get("vp")
+    if source_vapor_pressure is None:
+        raise ValueError(
+            "Vapor pressure is required to calculate NPSHa for pump sizing."
+        )
+    vapor_pressure_pa = float(source_vapor_pressure)
+
+    if density_kg_m3 <= 0:
+        raise ValueError("Liquid density must be greater than zero.")
+    if viscosity_pa_s <= 0:
+        raise ValueError("Liquid dynamic viscosity must be greater than zero.")
+
+    # Freeze the source-state liquid properties so the line-loss calculation
+    # remains physically representative while using a safe numerical pressure
+    # coordinate. This prevents the no-pump line solver from failing merely
+    # because the pump head has not yet been applied.
+    solver_fluid_config = dict(fluid_config)
+    solver_fluid_config.update(
+        {
+            "phase_type": "Liquid",
+            "use_manual_properties": True,
+            "density_kg_m3": density_kg_m3,
+            "dynamic_viscosity_pa_s": viscosity_pa_s,
+            "vapor_pressure_bar_a": vapor_pressure_pa / 100000.0,
+        }
+    )
+
+    return solver_fluid_config
+
+
+def build_pump_system_curve(
+    fluid_config: dict[str, Any], design_flow_value: float, flow_unit: str,
+    source_pressure_bar_a: float, elements: list[dict[str, Any]],
+    max_flow_factor: float = 1.5, number_points: int = 21,
+) -> dict[str, Any]:
+    """Separate the real property reference from the unpumped line's datum."""
+    frozen = freeze_pump_fluid_properties(fluid_config, source_pressure_bar_a)
+    result = build_system_curve(
+        fluid_config=frozen, design_flow_value=design_flow_value, flow_unit=flow_unit,
+        inlet_pressure_bar_a=1000.0, elements=elements,
+        max_flow_factor=max_flow_factor, number_points=number_points,
+    )
+    # The numerical datum does not represent a physical pumped pressure profile.
+    result["inlet_pressure_bar_a"] = None
+    result["property_reference_pressure_bar_a"] = source_pressure_bar_a
+    result["absolute_pressure_available"] = False
+    result["resolved_fluid_config"] = frozen
+    for point in [result["design_point"], *result["points"]]:
+        point["outlet_pressure_bar_a"] = None
+    result["assumptions"] = [
+        "Pump curve and design point use liquid properties frozen at the real source pressure.",
+        "The internal line-solver pressure datum is computational, not a physical pressure.",
+        "Known equipment pressure drops remain fixed across the flow range.",
+    ]
+    return result
+
+
 def size_pump_duty(
     fluid_config: dict[str, Any],
     design_flow_value: float,
@@ -2215,42 +2290,10 @@ def size_pump_duty(
             "Pump location must be between the source boundary and the final line element."
         )
 
-    # Evaluate the real liquid properties at the actual source boundary.
-    source_state = get_fluid_state(
-        fluid_config=fluid_config,
-        pressure_pa=source_pressure_bar_a * 100000.0,
-    )
-    if source_state is None:
-        raise ValueError("Unable to evaluate liquid properties at the source boundary.")
-
-    density_kg_m3 = float(source_state["rho"])
-    viscosity_pa_s = float(source_state["mu"])
-    source_vapor_pressure = source_state.get("vp")
-    if source_vapor_pressure is None:
-        raise ValueError(
-            "Vapor pressure is required to calculate NPSHa for pump sizing."
-        )
-    vapor_pressure_pa = float(source_vapor_pressure)
-
-    if density_kg_m3 <= 0:
-        raise ValueError("Liquid density must be greater than zero.")
-    if viscosity_pa_s <= 0:
-        raise ValueError("Liquid dynamic viscosity must be greater than zero.")
-
-    # Freeze the source-state liquid properties so the line-loss calculation
-    # remains physically representative while using a safe numerical pressure
-    # coordinate. This prevents the no-pump line solver from failing merely
-    # because the pump head has not yet been applied.
-    solver_fluid_config = dict(fluid_config)
-    solver_fluid_config.update(
-        {
-            "phase_type": "Liquid",
-            "use_manual_properties": True,
-            "density_kg_m3": density_kg_m3,
-            "dynamic_viscosity_pa_s": viscosity_pa_s,
-            "vapor_pressure_bar_a": vapor_pressure_pa / 100000.0,
-        }
-    )
+    solver_fluid_config = freeze_pump_fluid_properties(fluid_config, source_pressure_bar_a)
+    density_kg_m3 = solver_fluid_config["density_kg_m3"]
+    viscosity_pa_s = solver_fluid_config["dynamic_viscosity_pa_s"]
+    vapor_pressure_pa = solver_fluid_config["vapor_pressure_bar_a"] * 100000.0
 
     # --------------------------------------------------------
     # SUCTION SIDE / NPSHa
@@ -2401,6 +2444,7 @@ def size_pump_duty(
         point["pressure_bar_a"] = None
 
     return {
+        "resolved_fluid_config": solver_fluid_config,
         "phase_type": "Liquid",
         "design_flow_value": float(design_flow_value),
         "flow_unit": flow_unit,

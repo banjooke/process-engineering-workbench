@@ -496,7 +496,7 @@ type SystemCurvePoint = {
   static_head_m: number;
   resistance_dp_bar: number;
   resistance_head_m: number;
-  outlet_pressure_bar_a: number;
+  outlet_pressure_bar_a: number | null;
   warning_count: number;
   warnings: WarningItem[];
 };
@@ -509,13 +509,13 @@ type SystemCurveResult = {
   max_flow_factor: number;
   number_points: number;
   reference_density_kg_m3: number;
-  inlet_pressure_bar_a: number;
+  inlet_pressure_bar_a: number | null;
   design_point: {
     flow_value: number;
     flow_unit: string;
     total_dp_bar: number;
     total_head_m: number;
-    outlet_pressure_bar_a: number;
+    outlet_pressure_bar_a: number | null;
   };
   points: SystemCurvePoint[];
   assumptions: string[];
@@ -523,6 +523,7 @@ type SystemCurveResult = {
 
 
 type PumpSizingResult = {
+  resolved_fluid_config: Record<string, unknown>;
   phase_type: string;
   design_flow_value: number;
   flow_unit: string;
@@ -2125,6 +2126,7 @@ export default function Home() {
     const scenarioPhase = fluid.phase_type === "Gas" ? "Gas" : "Liquid";
     const temperature = Number(fluid.temperature_c);
     const pressureDropWithoutInlet =
+      fluid.engineering_task !== "pump_sizing" && !fluid.pump_sizing &&
       scenario.calculation_intent === "pressure_drop" && scenario.inlet_pressure_bar_a == null;
 
     if (mode === "coolprop") {
@@ -3880,15 +3882,12 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fluid_config: buildReportFluidConfig(),
+          fluid_config: pumpResult?.resolved_fluid_config ?? buildReportFluidConfig(),
           design_flow_value: Number(flowValue),
           flow_unit: normalizeFlowUnit(flowUnit),
-          // For pump-sizing system curves, absolute pressure is only a numerical
-          // coordinate for the underlying liquid line solver. Use a safe datum so
-          // a legitimate 10 m static lift from a 1 bar(a) vessel is not rejected
-          // before the pump head is applied. The plotted curve uses head/losses,
-          // not this artificial absolute-pressure coordinate.
-          inlet_pressure_bar_a: pumpResult ? 1000 : Number(inletPressure),
+          // Properties are frozen at the real source; the backend owns the numerical datum.
+          pump_system: Boolean(pumpResult),
+          inlet_pressure_bar_a: pumpResult ? pumpResult.source_pressure_bar_a : Number(inletPressure),
           elements: buildApiElements(),
           max_flow_factor: maxFactor,
           number_points: pointCount,
@@ -4114,19 +4113,15 @@ export default function Home() {
 
             const scenarioPumpResult: PumpSizingResult = await pumpResponse.json();
 
-            // Do not regenerate a full system curve for every saved scenario during
-            // report export. A system-curve call solves the line repeatedly and can make
-            // an all-scenario report appear to hang at "Creating PDF/Word report".
-            // The project report still contains the complete pump-duty and NPSHa results
-            // for every saved scenario. System-curve generation remains available as its
-            // own engineering task / on-screen calculation.
+            // The backend generates the report curve using the same frozen source
+            // properties as this duty result; do not duplicate that work here.
             const scenarioSystemCurve: SystemCurveResult | null = null;
 
             reportScenarios.push({
               name: scenario.name,
               description: scenario.description,
               engineering_task: "pump_sizing",
-              fluid_config: fluidConfig,
+              fluid_config: scenarioPumpResult.resolved_fluid_config,
               flow_value: scenario.flow_value,
               flow_unit: normalizeFlowUnit(scenario.flow_unit),
               source_pressure_bar_a: sourcePressure,
@@ -4192,7 +4187,7 @@ export default function Home() {
                 (selectedScenario?.name
                   ? `Pump Sizing - ${selectedScenario.name}`
                   : "Pump Sizing Analysis"),
-              fluid_config: buildReportFluidConfig(),
+              fluid_config: pumpResult.resolved_fluid_config,
               flow_value: Number(flowValue),
               flow_unit: normalizeFlowUnit(flowUnit),
               source_pressure_bar_a: Number(pumpSourcePressure),
