@@ -51,3 +51,6 @@ Thumbs.db
 # Coverage
 .coverage
 htmlcov/
+
+# Generated report artifacts
+reports/generated/
