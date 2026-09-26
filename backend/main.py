@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
@@ -46,6 +46,7 @@ from reports.project_engineering_report import (
 
 from database.db import create_db_and_tables
 
+from backend.auth import get_current_user_id
 from backend.projects import router as projects_router
 from backend.scenarios import router as scenarios_router
 from backend.project_delete import router as project_delete_router
@@ -396,7 +397,7 @@ def fluid_search(q: str = "", limit: int = 30):
     }
 
 
-@app.post("/fluids/properties")
+@app.post("/fluids/properties", dependencies=[Depends(get_current_user_id)])
 def fluid_properties(request: FluidPropertyRequest):
     if not automatic_properties_available():
         raise HTTPException(
@@ -426,7 +427,7 @@ def fluid_properties(request: FluidPropertyRequest):
     return result
 
 
-@app.post("/assistant/interpret-hydraulics")
+@app.post("/assistant/interpret-hydraulics", dependencies=[Depends(get_current_user_id)])
 def interpret_hydraulics(request: HydraulicPromptRequest):
     try:
         if request.use_ai:
@@ -478,7 +479,7 @@ def fittings_catalog():
         raise HTTPException(status_code=500, detail=f"Unable to load fitting catalog: {exc}") from exc
 
 
-@app.post("/fittings/calculate-k")
+@app.post("/fittings/calculate-k", dependencies=[Depends(get_current_user_id)])
 def fitting_k(request: FittingKRequest):
     try:
         return calculate_fitting_k(
@@ -491,7 +492,7 @@ def fitting_k(request: FittingKRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/calculate/velocity")
+@app.post("/calculate/velocity", dependencies=[Depends(get_current_user_id)])
 def velocity(request: VelocityInput):
     try:
         return {"velocity_m_s": calculate_velocity(request.flow_rate_m3_h, request.pipe_diameter_m)}
@@ -499,7 +500,7 @@ def velocity(request: VelocityInput):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/calculate/pressure-drop")
+@app.post("/calculate/pressure-drop", dependencies=[Depends(get_current_user_id)])
 def pressure_drop(request: PressureDropInput):
     try:
         velocity_m_s = calculate_velocity(request.flow_rate_m3_h, request.pipe_diameter_m)
@@ -534,7 +535,7 @@ def pressure_drop(request: PressureDropInput):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/hydraulics/solve-line")
+@app.post("/hydraulics/solve-line", dependencies=[Depends(get_current_user_id)])
 def solve_hydraulic_line(request: LineSolveInput):
     try:
         intent = request.calculation_intent or "outlet_pressure"
@@ -598,7 +599,7 @@ def solve_hydraulic_line(request: LineSolveInput):
         raise HTTPException(status_code=400, detail=f"Hydraulic calculation failed: {exc}") from exc
 
 
-@app.post("/hydraulics/system-curve")
+@app.post("/hydraulics/system-curve", dependencies=[Depends(get_current_user_id)])
 def hydraulics_system_curve(request: SystemCurveInput):
     try:
         fluid_config = request.fluid_config.model_dump()
@@ -628,7 +629,7 @@ def hydraulics_system_curve(request: SystemCurveInput):
         ) from exc
 
 
-@app.post("/hydraulics/pump-sizing")
+@app.post("/hydraulics/pump-sizing", dependencies=[Depends(get_current_user_id)])
 def hydraulics_pump_sizing(request: PumpSizingInput):
     try:
         fluid_config = request.fluid_config.model_dump()
@@ -660,7 +661,7 @@ def hydraulics_pump_sizing(request: PumpSizingInput):
         ) from exc
 
 
-@app.post("/reports/pump-sizing/pdf")
+@app.post("/reports/pump-sizing/pdf", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_pdf_report(request: PumpEngineeringReportRequest):
     try:
         report_path = create_pump_pdf_report(request.model_dump())
@@ -669,7 +670,7 @@ def pump_sizing_pdf_report(request: PumpEngineeringReportRequest):
         raise HTTPException(status_code=500, detail=f"Pump PDF report generation failed: {exc}") from exc
 
 
-@app.post("/reports/pump-sizing/docx")
+@app.post("/reports/pump-sizing/docx", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_docx_report(request: PumpEngineeringReportRequest):
     try:
         report_path = create_pump_docx_report(request.model_dump())
@@ -678,7 +679,7 @@ def pump_sizing_docx_report(request: PumpEngineeringReportRequest):
         raise HTTPException(status_code=500, detail=f"Pump Word report generation failed: {exc}") from exc
 
 
-@app.post("/reports/hydraulics/pdf")
+@app.post("/reports/hydraulics/pdf", dependencies=[Depends(get_current_user_id)])
 def hydraulic_pdf_report(request: EngineeringReportRequest):
     try:
         report_path = create_pdf_report(request.model_dump())
@@ -691,7 +692,7 @@ def hydraulic_pdf_report(request: EngineeringReportRequest):
         raise HTTPException(status_code=500, detail=f"PDF report generation failed: {exc}") from exc
 
 
-@app.post("/reports/hydraulics/docx")
+@app.post("/reports/hydraulics/docx", dependencies=[Depends(get_current_user_id)])
 def hydraulic_docx_report(request: EngineeringReportRequest):
     try:
         report_path = create_docx_report(request.model_dump())
@@ -763,7 +764,7 @@ def _prepare_pump_project_report_payload(
     return payload
 
 
-@app.post("/reports/pump-sizing/project/pdf")
+@app.post("/reports/pump-sizing/project/pdf", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_project_pdf_report(request: PumpProjectScenarioReportRequest):
     try:
         payload = _prepare_pump_project_report_payload(request)
@@ -780,7 +781,7 @@ def pump_sizing_project_pdf_report(request: PumpProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/pump-sizing/project/docx")
+@app.post("/reports/pump-sizing/project/docx", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_project_docx_report(request: PumpProjectScenarioReportRequest):
     try:
         payload = _prepare_pump_project_report_payload(request)
@@ -797,7 +798,7 @@ def pump_sizing_project_docx_report(request: PumpProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/hydraulics/project/pdf")
+@app.post("/reports/hydraulics/project/pdf", dependencies=[Depends(get_current_user_id)])
 def hydraulic_project_pdf_report(request: ProjectScenarioReportRequest):
     try:
         report_path = create_project_pdf_report(request.model_dump())
@@ -813,7 +814,7 @@ def hydraulic_project_pdf_report(request: ProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/hydraulics/project/docx")
+@app.post("/reports/hydraulics/project/docx", dependencies=[Depends(get_current_user_id)])
 def hydraulic_project_docx_report(request: ProjectScenarioReportRequest):
     try:
         report_path = create_project_docx_report(request.model_dump())

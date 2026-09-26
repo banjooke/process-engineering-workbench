@@ -1,4 +1,4 @@
-﻿"""Focused Stage 1 regressions. No application startup or database connections."""
+"""Focused Stage 1 regressions. No application startup or database connections."""
 import importlib
 import math
 import os
@@ -7,6 +7,7 @@ import runpy
 import tempfile
 import unittest
 from unittest.mock import patch
+from uuid import UUID
 
 from fastapi.testclient import TestClient
 
@@ -25,6 +26,14 @@ class EndpointAndReportTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
+
+    def setUp(self):
+        # Stage 1 tests exercise calculations behind the Stage 2 authentication gate.
+        overrides = patch.dict(self.api.app.dependency_overrides, {
+            self.api.get_current_user_id: lambda: UUID('00000000-0000-0000-0000-000000000001'),
+        })
+        overrides.start()
+        self.addCleanup(overrides.stop)
 
     def test_legacy_endpoint_numerical_regimes(self):
         for reynolds, regime, method in [
