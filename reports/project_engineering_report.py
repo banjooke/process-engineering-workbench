@@ -467,6 +467,7 @@ def _pump_summary_rows(scenarios: list[dict[str, Any]]) -> list[list[str]]:
             _safe_text(scenario.get("name")) or "Unnamed scenario",
             f"{scenario.get('flow_value', '-')} {scenario.get('flow_unit', '')}".strip(),
             fmt(duty.get("required_differential_head_m"), 3),
+            fmt((result.get("npsha") or {}).get("available_head_m"), 3),
             fmt(duty.get("required_differential_pressure_bar"), 4),
             fmt(duty.get("shaft_power_kw"), 4),
             fmt(duty.get("minimum_motor_rating_kw"), 4),

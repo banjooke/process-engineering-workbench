@@ -1,6 +1,10 @@
 import os
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlmodel import SQLModel, Session, create_engine
+
+load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
 
 def _database_url() -> str:

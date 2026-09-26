@@ -9,7 +9,7 @@ from engineering.hydraulics import (
     calculate_velocity,
     calculate_reynolds_number,
     classify_flow,
-    calculate_friction_factor,
+    friction_factor as engineering_friction_factor,
     calculate_pressure_drop,
     solve_line,
     build_system_curve,
@@ -504,23 +504,22 @@ def pressure_drop(request: PressureDropInput):
     try:
         velocity_m_s = calculate_velocity(request.flow_rate_m3_h, request.pipe_diameter_m)
         reynolds_number = calculate_reynolds_number(
-            density=request.density_kg_m3,
-            velocity=velocity_m_s,
-            diameter=request.pipe_diameter_m,
-            dynamic_viscosity=request.dynamic_viscosity_pa_s,
+            density_kg_m3=request.density_kg_m3,
+            velocity_m_s=velocity_m_s,
+            pipe_diameter_m=request.pipe_diameter_m,
+            dynamic_viscosity_pa_s=request.dynamic_viscosity_pa_s,
         )
         flow_regime = classify_flow(reynolds_number)
-        friction_factor, friction_method = calculate_friction_factor(
+        friction_factor, friction_method = engineering_friction_factor(
             reynolds_number=reynolds_number,
-            roughness=request.roughness_m,
-            diameter=request.pipe_diameter_m,
+            relative_roughness=request.roughness_m / request.pipe_diameter_m,
         )
         pressure_drop_pa = calculate_pressure_drop(
             friction_factor=friction_factor,
-            length=request.pipe_length_m,
-            diameter=request.pipe_diameter_m,
-            density=request.density_kg_m3,
-            velocity=velocity_m_s,
+            pipe_length_m=request.pipe_length_m,
+            pipe_diameter_m=request.pipe_diameter_m,
+            density_kg_m3=request.density_kg_m3,
+            velocity_m_s=velocity_m_s,
         )
         return {
             "velocity_m_s": velocity_m_s,
