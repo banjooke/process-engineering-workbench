@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
@@ -9,10 +9,12 @@ from engineering.hydraulics import (
     calculate_velocity,
     calculate_reynolds_number,
     classify_flow,
-    calculate_friction_factor,
+    friction_factor as engineering_friction_factor,
     calculate_pressure_drop,
     solve_line,
     build_system_curve,
+    build_pump_system_curve,
+    freeze_pump_fluid_properties,
     size_pump_duty,
 )
 from engineering.fluids import (
@@ -46,6 +48,7 @@ from reports.project_engineering_report import (
 
 from database.db import create_db_and_tables
 
+from backend.auth import get_current_user_id
 from backend.projects import router as projects_router
 from backend.scenarios import router as scenarios_router
 from backend.project_delete import router as project_delete_router
@@ -214,6 +217,7 @@ class LineSolveInput(BaseModel):
 
 
 class SystemCurveInput(BaseModel):
+    pump_system: bool = False
     fluid_config: FluidConfig
     design_flow_value: float = Field(gt=0)
     flow_unit: str = "m³/h"
@@ -396,7 +400,7 @@ def fluid_search(q: str = "", limit: int = 30):
     }
 
 
-@app.post("/fluids/properties")
+@app.post("/fluids/properties", dependencies=[Depends(get_current_user_id)])
 def fluid_properties(request: FluidPropertyRequest):
     if not automatic_properties_available():
         raise HTTPException(
@@ -426,7 +430,7 @@ def fluid_properties(request: FluidPropertyRequest):
     return result
 
 
-@app.post("/assistant/interpret-hydraulics")
+@app.post("/assistant/interpret-hydraulics", dependencies=[Depends(get_current_user_id)])
 def interpret_hydraulics(request: HydraulicPromptRequest):
     try:
         if request.use_ai:
@@ -478,7 +482,7 @@ def fittings_catalog():
         raise HTTPException(status_code=500, detail=f"Unable to load fitting catalog: {exc}") from exc
 
 
-@app.post("/fittings/calculate-k")
+@app.post("/fittings/calculate-k", dependencies=[Depends(get_current_user_id)])
 def fitting_k(request: FittingKRequest):
     try:
         return calculate_fitting_k(
@@ -491,7 +495,7 @@ def fitting_k(request: FittingKRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/calculate/velocity")
+@app.post("/calculate/velocity", dependencies=[Depends(get_current_user_id)])
 def velocity(request: VelocityInput):
     try:
         return {"velocity_m_s": calculate_velocity(request.flow_rate_m3_h, request.pipe_diameter_m)}
@@ -499,28 +503,27 @@ def velocity(request: VelocityInput):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/calculate/pressure-drop")
+@app.post("/calculate/pressure-drop", dependencies=[Depends(get_current_user_id)])
 def pressure_drop(request: PressureDropInput):
     try:
         velocity_m_s = calculate_velocity(request.flow_rate_m3_h, request.pipe_diameter_m)
         reynolds_number = calculate_reynolds_number(
-            density=request.density_kg_m3,
-            velocity=velocity_m_s,
-            diameter=request.pipe_diameter_m,
-            dynamic_viscosity=request.dynamic_viscosity_pa_s,
+            density_kg_m3=request.density_kg_m3,
+            velocity_m_s=velocity_m_s,
+            pipe_diameter_m=request.pipe_diameter_m,
+            dynamic_viscosity_pa_s=request.dynamic_viscosity_pa_s,
         )
         flow_regime = classify_flow(reynolds_number)
-        friction_factor, friction_method = calculate_friction_factor(
+        friction_factor, friction_method = engineering_friction_factor(
             reynolds_number=reynolds_number,
-            roughness=request.roughness_m,
-            diameter=request.pipe_diameter_m,
+            relative_roughness=request.roughness_m / request.pipe_diameter_m,
         )
         pressure_drop_pa = calculate_pressure_drop(
             friction_factor=friction_factor,
-            length=request.pipe_length_m,
-            diameter=request.pipe_diameter_m,
-            density=request.density_kg_m3,
-            velocity=velocity_m_s,
+            pipe_length_m=request.pipe_length_m,
+            pipe_diameter_m=request.pipe_diameter_m,
+            density_kg_m3=request.density_kg_m3,
+            velocity_m_s=velocity_m_s,
         )
         return {
             "velocity_m_s": velocity_m_s,
@@ -535,7 +538,7 @@ def pressure_drop(request: PressureDropInput):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/hydraulics/solve-line")
+@app.post("/hydraulics/solve-line", dependencies=[Depends(get_current_user_id)])
 def solve_hydraulic_line(request: LineSolveInput):
     try:
         intent = request.calculation_intent or "outlet_pressure"
@@ -599,7 +602,7 @@ def solve_hydraulic_line(request: LineSolveInput):
         raise HTTPException(status_code=400, detail=f"Hydraulic calculation failed: {exc}") from exc
 
 
-@app.post("/hydraulics/system-curve")
+@app.post("/hydraulics/system-curve", dependencies=[Depends(get_current_user_id)])
 def hydraulics_system_curve(request: SystemCurveInput):
     try:
         fluid_config = request.fluid_config.model_dump()
@@ -607,6 +610,17 @@ def hydraulics_system_curve(request: SystemCurveInput):
         if str(fluid_config.get("phase_type", "Liquid")).lower() != "liquid":
             raise ValueError(
                 "System-curve generation is currently limited to liquid systems."
+            )
+
+        if request.pump_system:
+            return build_pump_system_curve(
+                fluid_config=fluid_config,
+                design_flow_value=request.design_flow_value,
+                flow_unit=request.flow_unit,
+                source_pressure_bar_a=request.inlet_pressure_bar_a,
+                elements=[element.model_dump(exclude_none=True) for element in request.elements],
+                max_flow_factor=request.max_flow_factor,
+                number_points=request.number_points,
             )
 
         return build_system_curve(
@@ -629,7 +643,7 @@ def hydraulics_system_curve(request: SystemCurveInput):
         ) from exc
 
 
-@app.post("/hydraulics/pump-sizing")
+@app.post("/hydraulics/pump-sizing", dependencies=[Depends(get_current_user_id)])
 def hydraulics_pump_sizing(request: PumpSizingInput):
     try:
         fluid_config = request.fluid_config.model_dump()
@@ -661,25 +675,25 @@ def hydraulics_pump_sizing(request: PumpSizingInput):
         ) from exc
 
 
-@app.post("/reports/pump-sizing/pdf")
+@app.post("/reports/pump-sizing/pdf", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_pdf_report(request: PumpEngineeringReportRequest):
     try:
-        report_path = create_pump_pdf_report(request.model_dump())
+        report_path = create_pump_pdf_report(_prepare_pump_report_payload(request.model_dump()))
         return FileResponse(path=str(report_path), media_type="application/pdf", filename="pump_sizing_engineering_report.pdf")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pump PDF report generation failed: {exc}") from exc
 
 
-@app.post("/reports/pump-sizing/docx")
+@app.post("/reports/pump-sizing/docx", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_docx_report(request: PumpEngineeringReportRequest):
     try:
-        report_path = create_pump_docx_report(request.model_dump())
+        report_path = create_pump_docx_report(_prepare_pump_report_payload(request.model_dump()))
         return FileResponse(path=str(report_path), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename="pump_sizing_engineering_report.docx")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pump Word report generation failed: {exc}") from exc
 
 
-@app.post("/reports/hydraulics/pdf")
+@app.post("/reports/hydraulics/pdf", dependencies=[Depends(get_current_user_id)])
 def hydraulic_pdf_report(request: EngineeringReportRequest):
     try:
         report_path = create_pdf_report(request.model_dump())
@@ -692,7 +706,7 @@ def hydraulic_pdf_report(request: EngineeringReportRequest):
         raise HTTPException(status_code=500, detail=f"PDF report generation failed: {exc}") from exc
 
 
-@app.post("/reports/hydraulics/docx")
+@app.post("/reports/hydraulics/docx", dependencies=[Depends(get_current_user_id)])
 def hydraulic_docx_report(request: EngineeringReportRequest):
     try:
         report_path = create_docx_report(request.model_dump())
@@ -707,64 +721,61 @@ def hydraulic_docx_report(request: EngineeringReportRequest):
 
 
 
+def _prepare_pump_report_payload(payload: dict[str, Any], include_curve: bool = False) -> dict[str, Any]:
+    """Use one source state for report duty and curve, including direct API callers."""
+    fluid_config = payload.get("fluid_config", {}) or {}
+    frozen = freeze_pump_fluid_properties(fluid_config, float(payload["source_pressure_bar_a"]))
+    payload["fluid_config"] = frozen
+    payload["result"] = size_pump_duty(
+        fluid_config=frozen, design_flow_value=float(payload["flow_value"]),
+        flow_unit=payload["flow_unit"],
+        source_pressure_bar_a=float(payload["source_pressure_bar_a"]),
+        destination_pressure_bar_a=float(payload["destination_pressure_bar_a"]),
+        elements=payload["elements"], pump_efficiency=payload["pump_efficiency"],
+        motor_margin=payload["motor_margin"],
+        pump_after_element_index=payload.get("pump_after_element_index", 0),
+    )
+    if include_curve or payload.get("system_curve"):
+        settings = fluid_config.get("system_curve", {}) or payload.get("system_curve") or {}
+        try:
+            max_factor = float(settings.get("max_flow_factor", 1.5))
+        except (TypeError, ValueError):
+            max_factor = 1.5
+        try:
+            # Project exports retain their existing cost bound; current reports
+            # preserve the interactive curve's requested resolution.
+            minimum_points, maximum_points = (5, 21) if include_curve else (2, 101)
+            points = max(minimum_points, min(int(settings.get("number_points", 21)), maximum_points))
+        except (TypeError, ValueError):
+            points = 21
+        try:
+            payload["system_curve"] = build_pump_system_curve(
+                fluid_config=frozen, design_flow_value=float(payload["flow_value"]),
+                flow_unit=payload["flow_unit"],
+                source_pressure_bar_a=float(payload["source_pressure_bar_a"]),
+                elements=payload["elements"], max_flow_factor=max_factor, number_points=points,
+            )
+        except Exception as exc:
+            payload["system_curve"] = None
+            payload["result"].setdefault("warnings", []).append({
+                "code": "SYSTEM_CURVE_REPORT",
+                "message": f"System curve could not be generated for this report: {exc}",
+            })
+    return payload
+
+
 def _prepare_pump_project_report_payload(
     request: PumpProjectScenarioReportRequest,
 ) -> dict[str, Any]:
     payload = request.model_dump()
-
-    for scenario in payload.get("scenarios", []):
-        if scenario.get("system_curve"):
-            continue
-
-        fluid_config = scenario.get("fluid_config", {}) or {}
-        curve_settings = fluid_config.get("system_curve", {}) or {}
-
-        try:
-            max_flow_factor = float(curve_settings.get("max_flow_factor", 1.5))
-        except (TypeError, ValueError):
-            max_flow_factor = 1.5
-
-        try:
-            number_points = int(curve_settings.get("number_points", 21))
-        except (TypeError, ValueError):
-            number_points = 21
-
-        # Keep project-report generation bounded while retaining a smooth,
-        # solver-generated engineering curve.
-        number_points = max(5, min(number_points, 21))
-
-        try:
-            scenario["system_curve"] = build_system_curve(
-                fluid_config=fluid_config,
-                design_flow_value=float(scenario["flow_value"]),
-                flow_unit=str(scenario["flow_unit"]),
-                # Computational pressure datum only. System-curve reporting uses
-                # hydraulic head, not this artificial absolute pressure.
-                inlet_pressure_bar_a=1000.0,
-                elements=scenario.get("elements", []) or [],
-                max_flow_factor=max_flow_factor,
-                number_points=number_points,
-            )
-        except Exception as curve_exc:
-            # Do not fail the entire engineering report because one chart could
-            # not be generated. Keep the deterministic pump/NPSHa results and
-            # make the omission auditable in the scenario warnings.
-            scenario["system_curve"] = None
-            result = scenario.get("result", {}) or {}
-            warnings = list(result.get("warnings", []) or [])
-            warnings.append(
-                {
-                    "code": "SYSTEM_CURVE_REPORT",
-                    "message": f"System curve could not be generated for this report: {curve_exc}",
-                }
-            )
-            result["warnings"] = warnings
-            scenario["result"] = result
-
+    payload["scenarios"] = [
+        _prepare_pump_report_payload(scenario, include_curve=True)
+        for scenario in payload["scenarios"]
+    ]
     return payload
 
 
-@app.post("/reports/pump-sizing/project/pdf")
+@app.post("/reports/pump-sizing/project/pdf", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_project_pdf_report(request: PumpProjectScenarioReportRequest):
     try:
         payload = _prepare_pump_project_report_payload(request)
@@ -781,7 +792,7 @@ def pump_sizing_project_pdf_report(request: PumpProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/pump-sizing/project/docx")
+@app.post("/reports/pump-sizing/project/docx", dependencies=[Depends(get_current_user_id)])
 def pump_sizing_project_docx_report(request: PumpProjectScenarioReportRequest):
     try:
         payload = _prepare_pump_project_report_payload(request)
@@ -798,7 +809,7 @@ def pump_sizing_project_docx_report(request: PumpProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/hydraulics/project/pdf")
+@app.post("/reports/hydraulics/project/pdf", dependencies=[Depends(get_current_user_id)])
 def hydraulic_project_pdf_report(request: ProjectScenarioReportRequest):
     try:
         report_path = create_project_pdf_report(request.model_dump())
@@ -814,7 +825,7 @@ def hydraulic_project_pdf_report(request: ProjectScenarioReportRequest):
         ) from exc
 
 
-@app.post("/reports/hydraulics/project/docx")
+@app.post("/reports/hydraulics/project/docx", dependencies=[Depends(get_current_user_id)])
 def hydraulic_project_docx_report(request: ProjectScenarioReportRequest):
     try:
         report_path = create_project_docx_report(request.model_dump())
