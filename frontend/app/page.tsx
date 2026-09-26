@@ -4,11 +4,13 @@ import {
   ReactNode,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import UserAccount from "@/components/UserAccount";
-import { createClient } from "@/lib/supabase/client";
+import { apiFetch } from "@/lib/api";
+import EngineeringServiceStatus from "@/components/EngineeringServiceStatus";
 
 import {
   CartesianGrid,
@@ -21,46 +23,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-
-async function apiFetch(
-  input: RequestInfo | URL,
-  init: RequestInit = {}
-): Promise<Response> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  const headers = new Headers(init.headers);
-  if (session?.access_token) {
-    headers.set("Authorization", `Bearer ${session.access_token}`);
-  }
-
-  const method = (init.method ?? "GET").toUpperCase();
-  const attempts = method === "GET" ? 2 : 1;
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    try {
-      const response = await window.fetch(input, { ...init, headers });
-      if (attempt + 1 < attempts && response.status >= 500) {
-        await new Promise((resolve) => window.setTimeout(resolve, 2500));
-        continue;
-      }
-      return response;
-    } catch (error) {
-      lastError = error;
-      if (attempt + 1 < attempts) {
-        await new Promise((resolve) => window.setTimeout(resolve, 2500));
-      }
-    }
-  }
-
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("Unable to connect to the engineering server.");
-}
 
 
 // ============================================================
@@ -652,6 +614,8 @@ const inputClass =
 // ============================================================
 
 export default function Home() {
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const loadedProjectId = useRef<string | null>(null);
 
   const [
     activePage,
@@ -1021,14 +985,15 @@ export default function Home() {
   // PROJECT PERSISTENCE
   // ========================================================
 
-  async function refreshProjects(selectNewest = false) {
-    const response = await apiFetch(`${API_BASE_URL}/projects`);
+  async function refreshProjects(selectNewest = false, signal?: AbortSignal) {
+    const response = await apiFetch(`${API_BASE_URL}/projects`, { signal });
 
     if (!response.ok) {
       throw new Error(`Unable to load projects (${response.status}).`);
     }
 
     const data: ProjectSummary[] = await response.json();
+    signal?.throwIfAborted();
     setProjects(data);
 
     if (selectNewest && data.length > 0) {
@@ -1503,20 +1468,21 @@ export default function Home() {
     }
   }
 
-  async function refreshScenarios(projectId: string, selectNewest = false) {
+  async function refreshScenarios(projectId: string, selectNewest = false, signal?: AbortSignal) {
     if (!projectId) {
       setScenarios([]);
       setSelectedScenarioId("");
       return [];
     }
 
-    const response = await apiFetch(`${API_BASE_URL}/projects/${projectId}/scenarios`);
+    const response = await apiFetch(`${API_BASE_URL}/projects/${projectId}/scenarios`, { signal });
 
     if (!response.ok) {
       throw new Error(`Unable to load scenarios (${response.status}).`);
     }
 
     const data: SavedScenario[] = await response.json();
+    signal?.throwIfAborted();
     setScenarios(data);
 
     if (selectNewest && data.length > 0) {
@@ -2465,27 +2431,35 @@ export default function Home() {
   }
 
   useEffect(() => {
-    void refreshProjects().catch((err) => {
-      console.error("Project loading error:", err);
+    const controller = new AbortController();
+    void refreshProjects(false, controller.signal).catch((err) => {
+      if (!controller.signal.aborted) console.error("Project loading error:", err);
     });
-  }, []);
+    return () => controller.abort();
+  }, [loadAttempt]);
 
   useEffect(() => {
-    setSelectedScenarioId("");
-    setScenarioStatus("");
-    setScenarioComparisonRows([]);
-    setScenarioComparisonStatus("");
+    if (loadedProjectId.current !== selectedProjectId) {
+      loadedProjectId.current = selectedProjectId;
+      setSelectedScenarioId("");
+      setScenarioStatus("");
+      setScenarioComparisonRows([]);
+      setScenarioComparisonStatus("");
+    }
 
     if (!selectedProjectId) {
       setScenarios([]);
       return;
     }
 
-    void refreshScenarios(selectedProjectId).catch((err) => {
+    const controller = new AbortController();
+    void refreshScenarios(selectedProjectId, false, controller.signal).catch((err) => {
+      if (controller.signal.aborted) return;
       console.error("Scenario loading error:", err);
       setScenarios([]);
     });
-  }, [selectedProjectId]);
+    return () => controller.abort();
+  }, [selectedProjectId, loadAttempt]);
 
 
   // ========================================================
@@ -2513,6 +2487,8 @@ export default function Home() {
 
   useEffect(() => {
 
+    const controller = new AbortController();
+
     async function loadDatabases() {
 
       setDatabaseLoading(
@@ -2522,30 +2498,36 @@ export default function Home() {
       try {
 
         const [
-          fluidsResponse,
-          pipingResponse,
-          fittingsResponse,
+          fluidsLoad,
+          pipingLoad,
+          fittingsLoad,
         ] =
-          await Promise.all([
+          await Promise.allSettled([
             apiFetch(
-              `${API_BASE_URL}/fluids`
+              `${API_BASE_URL}/fluids`, { signal: controller.signal }
             ),
 
             apiFetch(
-              `${API_BASE_URL}/piping/catalog`
+              `${API_BASE_URL}/piping/catalog`, { signal: controller.signal }
             ),
 
             apiFetch(
-              `${API_BASE_URL}/fittings`
+              `${API_BASE_URL}/fittings`, { signal: controller.signal }
             ),
           ]);
 
 
+        if (controller.signal.aborted) return;
+        const fluidsResponse = fluidsLoad.status === "fulfilled" ? fluidsLoad.value : null;
+        const pipingResponse = pipingLoad.status === "fulfilled" ? pipingLoad.value : null;
+        const fittingsResponse = fittingsLoad.status === "fulfilled" ? fittingsLoad.value : null;
+
         if (
-          fluidsResponse.ok
+          fluidsResponse?.ok
         ) {
           const data =
             await fluidsResponse.json();
+          if (controller.signal.aborted) return;
 
           const catalogue: FluidCatalogueItem[] =
             Array.isArray(data.catalogue)
@@ -2566,10 +2548,11 @@ export default function Home() {
 
 
         if (
-          pipingResponse.ok
+          pipingResponse?.ok
         ) {
           const data =
             await pipingResponse.json();
+          if (controller.signal.aborted) return;
 
           setPipeCatalog(
             data
@@ -2577,10 +2560,11 @@ export default function Home() {
         }
 
         if (
-          fittingsResponse.ok
+          fittingsResponse?.ok
         ) {
           const data =
             await fittingsResponse.json();
+          if (controller.signal.aborted) return;
 
           setFittingCatalog(
             data
@@ -2590,6 +2574,7 @@ export default function Home() {
       }
 
       catch (err) {
+        if (controller.signal.aborted) return;
         console.error(
           "Database loading error:",
           err
@@ -2597,16 +2582,15 @@ export default function Home() {
       }
 
       finally {
-        setDatabaseLoading(
-          false
-        );
+        if (!controller.signal.aborted) setDatabaseLoading(false);
       }
     }
 
 
-    loadDatabases();
+    void loadDatabases();
+    return () => controller.abort();
 
-  }, []);
+  }, [loadAttempt]);
 
 
   useEffect(() => {
@@ -2614,10 +2598,12 @@ export default function Home() {
       return;
     }
 
+    const controller = new AbortController();
     const query = fluidSearch.trim();
 
     const timer = window.setTimeout(async () => {
       if (!query) {
+        setFluidSearchLoading(false);
         setFluidSearchResults(availableFluids.slice(0, 20));
         return;
       }
@@ -2626,7 +2612,8 @@ export default function Home() {
 
       try {
         const response = await apiFetch(
-          `${API_BASE_URL}/fluids/search?q=${encodeURIComponent(query)}&limit=30`
+          `${API_BASE_URL}/fluids/search?q=${encodeURIComponent(query)}&limit=30`,
+          { signal: controller.signal }
         );
 
         if (!response.ok) {
@@ -2634,10 +2621,12 @@ export default function Home() {
         }
 
         const data = await response.json();
+        if (controller.signal.aborted) return;
         setFluidSearchResults(
           Array.isArray(data.fluids) ? data.fluids : []
         );
       } catch (err) {
+        if (controller.signal.aborted) return;
         console.error("Fluid search error:", err);
 
         const q = query.toLowerCase();
@@ -2658,12 +2647,15 @@ export default function Home() {
             .slice(0, 30)
         );
       } finally {
-        setFluidSearchLoading(false);
+        if (!controller.signal.aborted) setFluidSearchLoading(false);
       }
     }, 250);
 
-    return () => window.clearTimeout(timer);
-  }, [fluidSearch, fluidSearchFocused, fluidMode, availableFluids]);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [fluidSearch, fluidSearchFocused, fluidMode, availableFluids, loadAttempt]);
 
 
   // ========================================================
@@ -4848,6 +4840,7 @@ export default function Home() {
 
 
       <div className="mx-auto max-w-7xl px-6 py-8">
+        <EngineeringServiceStatus onRetryLoads={() => setLoadAttempt((attempt) => attempt + 1)} />
 
         {wizardStep !== "overview" && wizardStep !== "tasks" && (
         <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">
