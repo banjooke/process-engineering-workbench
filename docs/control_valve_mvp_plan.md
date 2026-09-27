@@ -1,8 +1,52 @@
 # Control-valve MVP plan: mandatory hydraulic reuse
 
-Status: documentation-only plan, inspected 2026-09-27. No implementation is authorized by this document. This file did not previously exist; this plan records the mandatory reuse scope and the smallest necessary adapter.
+Status: documentation-only update, 2026-09-27. The limited first engine stage in §0 is authorized for future trial implementation under the equation record §1A. No code is created by this update. The later hydraulic adapter remains a separate stage.
 
-Related records: [Phase 1 specification](control_valve_sizing_spec.md) and [equation verification](control_valve_equation_verification.md). The owner's latest MVP instruction narrows the earlier attached-assembly approach: **MVP Phase 1 reducers and expanders remain ordinary external hydraulic resistance elements. IEC/ISA attached-valve reducer corrections are deferred.** This exception applies to this MVP plan; the two earlier documents are not edited. Their standards-verification, property-provenance and manufacturer-factor gates remain applicable to new valve calculations.
+Related records: [Phase 1 specification](control_valve_sizing_spec.md) and [equation verification](control_valve_equation_verification.md). The owner's latest MVP instruction narrows the earlier attached-assembly approach: **MVP Phase 1 reducers and expanders remain ordinary external hydraulic resistance elements. IEC/ISA attached-valve reducer corrections are deferred.** The approved full specification remains unchanged. The equation-verification record §1A now records a separate, narrow trial exception; production standards-verification, property-provenance and manufacturer-factor gates remain applicable.
+
+## 0. First engine stage — limited prototype
+
+The [equation-verification record §1A](control_valve_equation_verification.md#1a-limited-prototype-authorization--owner-requested-exception) is the authoritative source/convention/benchmark record. This stage authorizes **only** base non-choked turbulent liquid Cv, base Kv, reciprocal Cv/Kv conversion, volumetric-flow normalization, density/SG normalization and rating-margin algebra. Each carries **prototype_correlated — authorized for visibly labelled trial implementation**. Validation and warning/status scaffolding support these branches; no other physical method is authorized by this exception.
+
+“This prototype authorization is a documented exception for trial use. It does not constitute IEC/ISA verification and does not release the calculation for final engineering design, procurement or safety-critical decisions.”
+
+### Inputs, outputs and limitations
+
+Use supplied actual volumetric flow, real valve pressure drop and traceable frozen properties for supported pure single-phase Newtonian liquids. Known gas, steam, two-phase, non-Newtonian, mixture or choked service blocks supported sizing. Do not resolve properties at an artificial pressure. Where an existing provider is used for input preparation, retain its actual inlet pressure/temperature and provenance; do not add a new property implementation or invent missing density, viscosity, Pv or Pc. Mass-flow convenience paths, hydraulic pressure-budget reconstruction, travel models, reports and persistence are outside this first stage.
+
+Normalize internally to m³/s, Pa and kg/m³. Use the equation record's shared **G=ρ/1000 kg/m³ conventional reference**, with nominal water reference temperature 60°F (15.555555…°C), explicitly disclosing that 1000 is a convention rather than exact water density at that temperature. Unknown SG basis blocks normalization; another supplied basis needs its actual reference density. Kv means **m³/h at 1 bar**, never the historical kgf/cm² coefficient. Adopt `Kv = Cv × 0.8649776554423018`, with inverse computed from that same multiplier. Exact definitions and SI equations are in §1A, not a second constants registry here.
+
+Each result must return `verification_status = "prototype_correlated"`, the method/convention identity, input provenance, required base Cv/Kv, separately displayed margin (default 10%) and preliminary target rating. Margin applies only to maximum required coefficient ×1.10. Incomplete/unsupported cases must not disappear from aggregate status or yield a complete target recommendation. Return explicit errors/null values for invalid arithmetic or unsupported service, with reasons.
+
+Mandatory result warnings, retained by any eventual caller/display:
+
+- “Prototype calculation — not IEC/ISA verified; not for final design, procurement or safety-critical decisions.”
+- “Uncorrected turbulent liquid base estimate; non-choked applicability is not established by this calculation. Manufacturer confirmation required.”
+- “Choking assessment incomplete — verified method and applicable manufacturer factors required.”
+- “Cavitation assessment indeterminate — manufacturer data required.”
+- “Density reference uses the declared 1000 kg/m³ prototype convention.”
+
+If low-Reynolds behavior is suspected, return an **uncorrected preliminary diagnostic value** plus “Possible low-Reynolds/viscous service — base estimate may be inadequate; no viscosity correction applied; do not use for valve selection.” Mark applicability/assessment incomplete and corrected coefficient unavailable. Pipe-Re screening, if available from existing data, is only a warning trigger and cannot prove valve turbulence; do not introduce a new valve-Re equation, threshold or Fd assumption. Unknown regime remains unconfirmed. No output may claim completed choking/cavitation assessment, damage prevention or valve suitability.
+
+Missing FL/Fd never generates a default. These factors do not participate in the authorized base equation. A supplied P2≤Pv comparison may emit a simple vapor/flashing boundary warning; it cannot classify actual flashing extent or certify no flashing when absent. Missing vapor pressure remains explicitly unknown. This warning/status boundary does not authorize choking or cavitation equations.
+
+Still blocked: choking corrections and FF/terminal limits, cavitation classifications, flashing prediction beyond this simple warning, Reynolds/viscosity correction, Fd-dependent methods, attached fitting corrections, FP/FLP, gas/steam, all mixtures and vendor selection. No release certification is implied by passing prototype tests.
+
+### Tests and integration gate
+
+Keep the engine isolated from production API/UI. Before any later integration proposal, require:
+
+1. Published independent benchmark B15: Spirax Sarco Example 6.5.2, Q=10 m³/h, ΔP=1.54 bar, simplified water G=1, expected Kv=8.06; absolute tolerance **0.005 Kv**, relative tolerance zero. This checks base arithmetic only; absent state data must not be invented to turn it into a physical qualification fixture.
+2. Separate definitional identities: Cv=1 at G=1, 1 US gpm/1 psi; Kv=1 at G=1, 1 m³/h/1 bar; coefficient round trips; SI/US equivalence; density/SG equivalence. Relative tolerance **1e-12**, coefficient absolute tolerance **1e-12**. These are not independent benchmarks.
+3. Invalid/nonfinite/near-zero input guards, explicit SG basis and no fluid/factor defaults; unsupported service rejection; low-Re/unknown-regime incomplete results; mandatory warnings and `prototype_correlated` status on every numerical result; no corrected or completed assessment claims.
+4. Margin-only behavior and incomplete-case aggregation; single reciprocal conversion constant; reject ambiguous gallon/Kv conventions; preserve frozen inputs and provenance.
+5. Complete Python regression suite and `git diff --check`; integration remains a separate authorized task even after tests pass. No API/UI, authentication, hydraulic or engineering-calculation changes outside the isolated new module/tests.
+
+The prior engine implementation prompt **requires revision** to adopt §1A's explicit reference convention, conversion and B15 tolerances, and remove any mass-flow, characteristic/travel or hydraulic-adapter work from this first stage. Its broader full-spec scope is not implicitly authorized. No calculation code, tests, commits or pushes are performed by this documentation task.
+
+### Later hydraulic stage — mandatory reuse preserved
+
+Sections 1–6 below apply when the system-aware adapter is separately implemented. They are not part of the first engine stage. Reuse the existing Crane database, lookup functions, pipe catalogue, property resolver and hydraulic engine exactly as inventoried below. Do not duplicate K/equivalent-length calculations. Reducers/expanders remain ordinary external hydraulic elements; attached IEC/ISA corrections remain deferred, preventing double counting. Existing hydraulic results do not validate the new provisional valve equation.
 
 ## 1. Existing implementation inventory
 
@@ -147,4 +191,4 @@ Existing Crane lookup, pipe friction, pressure-loss, pipe catalogue and fluid-pr
 
 New wrapper logic consists only of input/state validation, side/ownership mapping, engine invocation, frozen-liquid boundary replay, metadata preservation and output aggregation. Its correctness is provisional until integration parity and boundary tests pass. New control-valve required-coefficient, recovery/choking, Reynolds-correction and cavitation methods remain separately subject to the [equation-verification gates](control_valve_equation_verification.md); successful existing hydraulics do not clear those gates.
 
-Acceptance requires all eleven required pressure outputs or explicit unavailable reasons, full metadata and final warning preservation, direct-engine integration parity, and zero duplicated external/attached losses. Reducer/expander formula automation, IEC/ISA attached corrections, replacement Crane tables, equivalent-length calculations and changes to validated existing loss formulas are excluded. Implementation, commits and pushes require a separate request.
+Acceptance requires all eleven required pressure outputs or explicit unavailable reasons, full metadata and final warning preservation, direct-engine integration parity, and zero duplicated external/attached losses. Reducer/expander formula automation, IEC/ISA attached corrections, replacement Crane tables, equivalent-length calculations and changes to validated existing loss formulas are excluded. Hydraulic-adapter implementation requires a separate request; only §0 has the narrow trial authorization. No commit or push is authorized.

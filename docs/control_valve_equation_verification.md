@@ -1,8 +1,8 @@
 # Control-valve equation-verification record
 
-Review date: 2026-09-27. Record version: 1. Status: evidence review completed; standards-dependent implementation and production release remain blocked.
+Review date: 2026-09-27. Record version: 2. Status: limited manufacturer-correlated prototype authorized under §1A; standards-dependent production release remains blocked.
 
-Governing requirement: [approved Phase 1 specification](control_valve_sizing_spec.md), including its Approved Phase 1 Design Basis and decisions 1–27. This record does not revise that basis, authorize implementation, or certify compliance. All function/test names below are proposals, not existing control-valve implementations.
+Governing requirement: [approved Phase 1 specification](control_valve_sizing_spec.md), including its Approved Phase 1 Design Basis and decisions 1–27. This record leaves that full design basis unchanged and records the owner-requested, narrow trial exception in §1A; it does not certify compliance. All function/test names below are proposals, not existing control-valve implementations.
 
 Repository inspected at commit `5b4f5b3d9df620ef1564f0493d9b0e1485b7974a`. Approved specification SHA-256: `FC0709DCBC4CD07E60BA8C43C11F2D1A2869519B27789CEA129A49016318E923`.
 
@@ -22,11 +22,79 @@ Evidence status and permission to implement are separate fields. Manufacturer ag
 | RI | Repository interface inspected | Confirms existing field/function behavior, not physical accuracy. |
 | NI | Not approved for implementation | Missing evidence, unresolved conflict, unsupported branch or deferred scope. |
 
-Before implementing E2–E10 standards-dependent sizing branches: require AS for the entire branch, dimensional/unit checks, reconciled primary-source conflicts, qualified MV inputs, and independently reviewed expected values. Specification §§1, 10 and 28 require verification before implementing each affected branch, not merely before release. MP is insufficient to bypass this rule.
+Except for the explicitly bounded trial exception in §1A, before implementing E2–E10 standards-dependent sizing branches: require AS for the entire branch, dimensional/unit checks, reconciled primary-source conflicts, qualified MV inputs, and independently reviewed expected values. Specification §§1, 10 and 28 require verification before implementing each affected branch, not merely before release. MP is insufficient to bypass this rule.
 
 ID and already approved EA transformations can be implemented separately after a future implementation request. An idealized E11 model can be isolated as approved EA algebra; using it for a real valve still needs MV qualification. Production requires all relevant AS/MV gates, independent benchmark acceptance, deterministic tests and specification §24 workflow checks. Neither this review nor an algebraic self-check is independent engineering sign-off.
 
 Required future sign-off fields: source ID/version/hash, clause/page/equation, unit tuple, constants with precision, domain, source differences, derivation/check attachment, benchmark IDs, reviewer identity/date and disposition. Current authorized-standard reviewer: **not assigned**; sign-off: **outstanding**.
+
+## 1A. Limited prototype authorization — owner-requested exception
+
+Authorization recorded 2026-09-27. Only the six branches below receive **prototype_correlated — authorized for visibly labelled trial implementation**. This is a narrow exception to the implementation gate, not an amendment of the approved full specification or an AS status. All production-release gates remain in force.
+
+“This prototype authorization is a documented exception for trial use. It does not constitute IEC/ISA verification and does not release the calculation for final engineering design, procurement or safety-critical decisions.”
+
+### Primary-source reconciliation and traceability
+
+All following official documents were opened on **2026-09-27**; no search snippet is evidence. Missing publication metadata is explicitly unknown, not inferred from a URL suffix.
+
+| ID | Manufacturer / exact title | Document number; edition/revision | Page or section; official source |
+|---|---|---|---|
+| T1 | Emerson/Fisher, *Valve Sizing Calculations (Traditional Method)* | Official file D351798X012_11; revision/date not stated on inspected opening page | Printed p.626, PDF p.1, liquid equations (1)–(2) and definitions; [official PDF](https://www.emerson.com/is/content/emerson/en/final-control/flow-controls/documents/d351798x012_11.pdf) |
+| T2 | Valmet/Jamesbury, *2”–12” (DN 50–300) side ported Jamesbury™ 3-way flanged ball valves* | B114-1EN; 5/2024 | Printed p.3, Flow data; [official PDF](https://www.valmet.com/globalassets/sharepoint/imported/b114-1en.pdf) |
+| T3 / M4 | SAMSON, *Application Notes: Kv coefficient · Valve sizing* | AB 05 EN; March 2012, footer 2012-05 | p.1, liquids; [official PDF](https://www.samson.de/document/t00050en.pdf) |
+| T4 / M5 | Spirax Sarco, *Control Valve Capacity* | Online module 6.2; no separate document number or revision date published | Coefficient definitions and conversion paragraph; [official page](https://www.spiraxsarco.com/learn-about-steam/control-hardware-electric-pneumatic-actuation/control-valve-capacity) |
+| T5 / M6 | Spirax Sarco, *Control Valve Characteristics* | Online module 6.5; no separate document number or revision date published | Example 6.5.2, full-load calculation and installation-curve paragraph; [official page](https://www.spiraxsarco.com/learn-about-steam/control-hardware-electric-pneumatic-actuation/control-valve-characteristics) |
+| U4 | NIST, *Specifications, Tolerances, and Other Technical Requirements for Weighing and Measuring Devices* | Handbook 44, 2009 | Appendix B §3 mass definition, PDF p.321; Appendix C liquid-volume table, PDF p.326; [official PDF](https://www.nist.gov/system/files/documents/2017/05/09/HB44-09-Combined.pdf). Used with U1 standard gravity and U2 exact inch. |
+
+T1 gives the US-gpm/psi liquid square-root relationship and water reference at 60°F. T2 independently confirms that Cv definition, but its Kv uses water at 16°C and 1 kg/cm² (force-pressure convention), with printed multiplier 0.8569. T3 instead supplies the m³/h/bar liquid formula with density divisor 1000 kg/m³. T4 defines bar-based Kv and corroborates its conversion to US Cv. These sources support the same base relation after declaring units; their historical coefficients are **not interchangeable**.
+
+### Adopted prototype convention and dimensional check
+
+Use pure, single-phase Newtonian liquids only; actual inlet volumetric flow Q, positive valve differential pressure ΔP, and a traceable operating density or explicitly based SG must be known. Scope is the turbulent, non-choked **base** equation with no attached-fitting or Reynolds correction. It does not prove those conditions for a real valve.
+
+The prototype uses **G = ρ / (1000 kg/m³)** for both coefficients, following T3's conventional density normalization. Reference temperature metadata: T1's nominal reference water is **60°F = 15.555555…°C**, while T2 specifies 16°C for Kv. The adopted 1000 kg/m³ is a **conventional reference**, not a claim that physical water at either temperature has exactly that density. Do not obtain operating density from this constant. This shared-reference approximation must be visible in result provenance; exact manufacturer/standard water-density reconciliation remains a production gate. Supplied SG based on another physical water density requires its explicit reference density: first recover operating ρ, then normalize to the project reference. Unknown SG basis blocks calculation. No silent temperature or density substitution is permitted.
+
+| Branch | Numerical equation and attached units |
+|---|---|
+| E2v base Cv | `Cv = q_US × sqrt(G / dp_psi)`; q_US is the numerical flow in US liquid gal/min, dp_psi the numerical differential in psi. Unity N1 has unit US gal/min per Cv per sqrt(psi). |
+| E2k base Kv | `Kv = q_h × sqrt(G / dp_bar)`; q_h in m³/h and dp_bar in bar. Unity N1 has unit m³/h per Kv per sqrt(bar). Kv here **always means bar-based**. |
+| Internal SI form | `Kv = [Q / ((1/3600) m³/s)] × sqrt[G / (ΔP / 100000 Pa)]`; `Cv = [Q / (0.003785411784/60 m³/s)] × sqrt[G / (ΔP / p_psi)]`. Each bracket is dimensionless; outputs are tagged conventional coefficient numbers. |
+| Flow normalization | m³/h ÷3600; L/s ÷1000; L/min ÷60000; US gpm ×0.003785411784/60, all to m³/s. m³/s passes unchanged. No Imperial gallon or standard gas-volume interpretation. |
+| Density normalization | ρ in kg/m³; g/cm³ ×1000; G dimensionless. Both ρ and reference density must be finite and positive. |
+| Rating margin E12 subset | `target_rated = max(required_enabled_cases) × (1 + margin)`; default margin 0.10 dimensionless. Required, margin and target are separate. No change to Q, ΔP or required Cv/Kv. No automatic commercial selection. |
+
+Metrological derivation: one US gallon = 231 × (0.0254 m)³ = 0.003785411784 m³; one lbf = 0.45359237 kg × 9.80665 m/s². Thus `p_psi = 0.45359237 × 9.80665 / 0.0254² Pa = 6894.757293168361336722673… Pa`. The definition is exact; a floating-point representation is rounded. Bar =100000 Pa; minute =60 s; hour =3600 s. Do not substitute NIST's abbreviated printed psi row as exact.
+
+For the **same project reference G**:
+
+- `a = Kv/Cv = (60 × 0.003785411784) × sqrt(100000 / p_psi) = 0.8649776554423017613344771495…`.
+- Adopt binary64 multiplier `0.8649776554423018`; compute its inverse from that one multiplier. Mathematical reciprocal `Cv/Kv = 1.1560992283536564595090584655…`; never store two independently rounded conversion constants.
+- Legacy 0.865 changes Kv by +0.00258325%; legacy 1.156 changes Cv by −0.00858303%. Using 0.8569 as the bar multiplier changes Kv by −0.93385712%.
+- For an identical reference, the kgf/cm² definition gives `a × sqrt(98066.5/100000) = 0.856574667758280…`, not the bar multiplier. T2's printed 0.8569 is also not this exact conversion; its residual is not resolved by inventing a reference density. It is excluded, not averaged into the adopted constant. Imported historical Kv requires explicit basis conversion and is outside this first stage.
+
+Applicability guards require finite positive Q, ΔP and density; real pressure/state provenance; supported pure-liquid phase; and no requested corrections. Do not label a base result as completed sizing, non-choking certification or vendor suitability. Known choked, gas, steam, two-phase, non-Newtonian and mixture service is unsupported. A suspected low-Re case may return only an **uncorrected preliminary diagnostic**, with strong limitation and incomplete assessment; pipe Reynolds screening does not establish valve turbulence. Missing FL/Fd must never produce defaults. Choking/cavitation assessments remain incomplete, including for otherwise eligible base results. An available P2≤Pv comparison may issue a simple vapor/flashing warning and block a completed sizing claim; it is not a flashing prediction. Missing Pv is unknown, never zero.
+
+### Independent benchmark versus identity checks
+
+**B15 — published independent numerical benchmark:** T5 Example 6.5.2, full-load water/feedwater case: Q=10 m³/h; valve ΔP=1.54 bar; published required `Kvr=8.06` (two decimals). The simplified water equation uses G=1. Context gives boiler pressure 10 bar(g) and boiler rating 10 tonnes/h; neither is an extra input to this arithmetic fixture. Temperature, viscosity, recovery factors and full physical state are not specified; do not fabricate them or use this fixture to validate property resolution/choking eligibility. All inputs to the published base coefficient calculation are available. It is a manufacturer's worked sizing example, independent of project code and of T1/T3's equation statements, not a constructed identity.
+
+Project recalculation is `10/sqrt(1.54) = 8.058229640253803`, which rounds to 8.06. Future fixture compares directly with the **published 8.06 using absolute tolerance 0.005 Kv, relative tolerance zero**. Do not calculate the test oracle with the implementation under test. Cv derived from this Kv is a conversion check, not a second independent benchmark. This establishes base arithmetic correlation only, not independent physical validation or production release.
+
+Separate **identity checks**, relative tolerance 1e-12 (absolute 1e-12 for coefficient comparisons): G=1 at Q=1 US gpm, ΔP=1 psi gives Cv=1; G=1 at Q=1 m³/h, ΔP=1 bar gives Kv=1; Cv→Kv→Cv over positive finite representative values; equivalent SI/US input cases; density/SG equivalence. Reference-water cases use the stated conventional reference, not an invented operating-water property. Reject overflow/nonfinite intermediates rather than weakening tolerances. Unit round trips use relative 1e-12 over the validated input range. These tolerances assess software arithmetic, not engineering accuracy.
+
+### Narrow authorization matrix
+
+| Branch | Implementation status | Required future checks |
+|---|---|---|
+| E2v base non-choked turbulent liquid Cv | prototype_correlated — authorized for visibly labelled trial implementation | B15 through conversion; Cv defining identity; explicit scope/limitations |
+| E2k base non-choked turbulent liquid Kv | prototype_correlated — authorized for visibly labelled trial implementation | Published B15 and Kv identity |
+| E2c Cv/Kv conversion | prototype_correlated — authorized for visibly labelled trial implementation | Single factor/reciprocal, historical-basis rejection, round trips |
+| U-Q volumetric-flow normalization | prototype_correlated — authorized for visibly labelled trial implementation | Exact declared unit anchors and SI/US equivalence |
+| E1d density/SG normalization | prototype_correlated — authorized for visibly labelled trial implementation | Explicit reference, no operating-property defaults |
+| E12 rating-margin algebra only | prototype_correlated — authorized for visibly labelled trial implementation | Margin affects target only; incomplete cases cannot yield a complete aggregate |
+
+Everything else retains its existing evidence status and receives **no additional authorization**. Specifically blocked: choking correction/FF/terminal limits, cavitation classification, flashing prediction beyond the simple warning boundary, valve Reynolds/viscosity correction, Fd calculation/use in corrections, attached fitting corrections, FP/FLP, gas, steam, all mixtures, and vendor selection. Characteristics/travel, hydraulic integration, mass-flow convenience paths and production API/UI are outside this first engine stage. Existing validation and status guards support the six branches without adding a physical calculation method.
 
 ## 2. Standards, editions and source register
 
@@ -118,9 +186,9 @@ Identifiers retain P0 E1–E11; suffixes distinguish the checks. These are equat
 
 Numerical constant register: M1 Table 2 supplies the Cv tuple `(q=m³/h, pressure=bar): N1=0.865` and `(q=US gpm, pressure=psi): N1=1`. For Cv with d in inches, N2=890; with q in US gpm and ν in cSt, N4=17300. These are **printed source values**, not approved exact constants. N2/N4 applicability remains unresolved for E7/E8. No Kv N2/N4 set is approved. Do not combine a Kv coefficient with Cv geometry constants, or SI Q/ν/d with these customary constants. [M1](https://www.emerson.com/is/content/emerson/en/final-control/flow-controls/documents/cat12_s2.pdf), Table 2, p. 2-3.
 
-Cv/Kv conversion E2c: M5 gives `CvUS=1.156099 Kv`, rounded. For equal reference-density conventions, derive `Kv/Cv = (US_gallon_m³ × 60) × sqrt(Pa_per_bar/Pa_per_psi)`. Unequal references additionally require `sqrt(ρref,Cv/ρref,Kv)`. This is dimensional/algebraic inference, not verification of the standards' reference-water conventions. Therefore the production full-precision conversion factor remains **SV/NI**. Never implement both 0.865 and 1.156 as independently rounded inverse conversions. See §12 for the precision gate.
+Cv/Kv conversion E2c: M5 gives `CvUS=1.156099 Kv`, rounded. For equal reference-density conventions, derive `Kv/Cv = (US_gallon_m³ × 60) × sqrt(Pa_per_bar/Pa_per_psi)`. Unequal references additionally require `sqrt(ρref,Cv/ρref,Kv)`. This is dimensional/algebraic inference, not verification of the standards' reference-water conventions. Therefore the production full-precision conversion factor remains **SV/NI**. Never implement both 0.865 and 1.156 as independently rounded inverse conversions. The limited shared-reference prototype exception is now reconciled in §1A; see §12 for the remaining production gate.
 
-Eligibility precedes arithmetic: pure Newtonian liquid, actual inlet flow, positive valid pressure drop, frozen properties, appropriate taps, demonstrated turbulence and non-choking. Missing recovery data may permit an explicitly diagnostic E2 base value after branch verification; it cannot establish completed sizing. No numerical density, viscosity, Pv, Pc, FL or Fd may be invented to complete eligibility.
+For completed standards-based sizing (trial diagnostics follow §1A), eligibility precedes arithmetic: pure Newtonian liquid, actual inlet flow, positive valid pressure drop, frozen properties, appropriate taps, demonstrated turbulence and non-choking. Missing recovery data may permit an explicitly diagnostic E2 base value after branch verification; it cannot establish completed sizing. No numerical density, viscosity, Pv, Pc, FL or Fd may be invented to complete eligibility.
 
 ## 5. Liquid critical-pressure ratio factor
 
@@ -245,9 +313,9 @@ U1/U2/U3 plus P0 §9 support the following registry. Each multiplicative convers
 | U-MU | mPa·s and cP×0.001 | 1 cP↔0.001 Pa·s | ID, U1. |
 | U-NU | mm²/s and cSt×1e-6 | 1 cSt↔1e-6 m²/s; also E1c | ID, U1. |
 | U-D | mm×0.001; in×0.0254 | 1 in↔25.4 mm↔0.0254 m | ID, U2. |
-| U-C | Cv/Kv E2c, using one reviewed multiplier and reciprocal | M5 rounded anchor: Kv=1→CvUS=1.156099 | P1/SV, not approved full-precision registry. |
+| U-C | Cv/Kv E2c, using one reviewed multiplier and reciprocal | M5 rounded anchor: Kv=1→CvUS=1.156099 | Prototype factor approved only under §1A; production SV remains. |
 
-Precision disposition: NIST B.8 prints rounded psi and US-flow factors. P0's exact gallon definition is retained; its higher precision must not be inferred from NIST's rounded row alone. Before production, verify an exact psi derivation from authoritative force/mass/length definitions and pin it with its reference. Do not silently elevate 6894.757 to an exact definition. A unit-only rounded-reference check is permissible; a release coefficient adapter is blocked until psi precision and water-reference conventions are reconciled. The rounded M5 coefficient conversion is a comparison anchor, not an approved exact multiplier.
+Production precision disposition (the §1A trial convention now supersedes the earlier prototype blocker): NIST B.8 prints rounded psi and US-flow factors. P0's exact gallon definition is retained; its higher precision must not be inferred from NIST's rounded row alone. The exact psi derivation and references are now recorded in §1A; production still requires the standard coefficient reference conventions. Do not silently elevate 6894.757 to an exact definition. A unit-only rounded-reference check is permissible; a release coefficient adapter is blocked until standard water-reference conventions are reconciled. The rounded M5 coefficient conversion is a comparison anchor, not an approved exact multiplier.
 
 Proposed computational round-trip tolerance: relative 1e-12 for nonzero exact multiplicative conversions, absolute 1e-10 K for ordinary temperature anchors; source-rounding comparisons use the printed last-place interval instead. These are new test-policy proposals, not property accuracy claims. Round-trip agreement alone cannot detect two mutually consistent wrong constants; every conversion needs its external anchor and dimensional assertion. Reject unknown units, NaN/Infinity, ambiguous gallons, liquid Nm³/h, pressure-basis mismatches and DN-as-ID.
 
@@ -307,9 +375,9 @@ Copyright disposition: `Factual candidate` means only isolated factual input/out
 
 | ID / coverage | Source and inputs | Expected output / units | Rounding and proposed tolerance | Status / fixture disposition |
 |---|---|---|---|---|
-| B01 Base Cv | M5 definition, P0 E2v: independently construct reference-water case, 1 US gpm and 1 psi, G=1 | Cv=1 by definition | Exact definition anchor; proposed relative 1e-12 arithmetic | Own identity; reference convention and complete turbulent/non-choked state qualification missing, SV blocker. |
+| B01 Base Cv | M5 definition, P0 E2v: independently construct reference-water case, 1 US gpm and 1 psi, G=1 | Cv=1 by definition | Exact definition anchor; proposed relative 1e-12 arithmetic | Own identity; §1A trial reference adopted; complete physical-state qualification remains a production blocker. |
 | B02 Base Kv | M7 Example 6.3.1: water, q=10 m³/h, Kv=16, G=1 | Published graphical ΔP≈0.4 bar; independent simplified algebra gives 0.390625 bar | Chart is coarse; proposed ±0.05 bar only for chart comparison. Derived arithmetic oracle needs separate sign-off | Factual candidate + own derivation; not a complete operating-state fixture. |
-| B03 Cv/Kv | M5 conversion: Kv=1 | CvUS=1.156099 | Six decimal places; proposed ±0.0000005 on printed comparison, reciprocal check separately | P1/SV; factual candidate; exact adopted convention unresolved. |
+| B03 Cv/Kv | M5 conversion: Kv=1 | CvUS=1.156099 | Six decimal places; proposed ±0.0000005 on printed comparison, reciprocal check separately | Printed comparison only; §1A adopts the shared-reference trial conversion; standard reference remains SV. |
 | B04 Choked flow | M3 pp.111–112: q=40 m³/h, T=20 °C, P1=10/P2=1.5 bar(a), G=1, Pc=221.2 bar(a), d=D1=D2=50 mm, FL=0.9; Pv conflict below | Printed FF=0.957, ΔPt=8.08 bar, Cv=16.3 | Printed 3 decimals, 2 decimals, 1 decimal; tolerance unapproved until input conflict resolved | P1/NI; factual candidate; special Q-Trim example outside initial scope, cannot validate ordinary trim release. |
 | B05 Choking boundary | Future authorized worked example plus signed below/equal/above-limit derivative cases | Missing complete numeric fixture; expected operator logic in §6 only | Exact branch outside validated ε; continuity tolerance must be reviewed | Missing, release blocker; no fixture approved. |
 | B06a Attached reducer FP subcase | M1 pp.2-8–2-9: d=3 in, D1=D2=8 in as used by source, trial Cv121, N2=890, identical concentric attachments | Printed Σζ1.11, FP0.90 | Two decimals; proposed ±0.005 for printed-factor comparison only | P1/SV; factual candidate. Source's nominal/actual diameter treatment needs reconciliation; not a converged sizing oracle. |
@@ -320,8 +388,9 @@ Copyright disposition: `Factual candidate` means only isolated factual input/out
 | B10 Fluid engine | Independent pure-liquid property reference at specified real P1/T, pinned provider version | ρ/μ/Pv/Pc expected values missing | Property-specific uncertainties; no blanket percentage | Missing, release blocker; engine output cannot create its own reference. |
 | B11 Crane external loss | Workbook hash §14 plus authorized independent Crane example, exact geometry/quantity/velocity basis | K and ΔP expected values missing | Source precision plus independently reviewed hydraulic residual | Missing, release blocker; workbook alone is not independent evidence. |
 | B12 No double counting / pressure budget | Signed worksheet with separate attached/remote element IDs, source/sink elevation/velocity/pressure and pump input | Missing numeric ΔP/P1/P2; each ID exactly one owner is an independent structural invariant | Exact ledger membership; pressure tolerance requires worksheet review | Ownership rule EA-ready; numeric integration benchmark missing, release blocker. |
-| B13 Unit identities | §12 anchors, U1/U2/U3 and P0 | Explicit SI/reverse values in §12 | Exact vs rounded checks separated | ID; own identity, review pending; psi/full-precision Cv-Kv not cleared. |
+| B13 Unit identities | §12 anchors, U1/U2/U3 and P0 | Explicit SI/reverse values in §12 | Exact vs rounded checks separated | ID; own identity; exact psi and trial Cv/Kv resolved in §1A; production review pending. |
 | B14 Margin/disabled cases | P0: synthetic required coefficients 10 and20 in one basis; m0.10 | Cmax20, margin2, target22; required values unchanged | Exact elementary arithmetic; independent review before encoding | EA/ID, own identity; not valve sizing validation. |
+| B15 Base Kv published sizing | T5/M6 Example 6.5.2: Q=10 m³/h, ΔP=1.54 bar, simplified water G=1; see §1A for missing physical-state details | Published Kvr=8.06 | Two decimals; absolute 0.005 Kv, relative zero | Independent numerical arithmetic benchmark; trial use authorized, physical/release qualification outstanding. |
 
 Matrix references to B06 include B06a and B06b. The FP-only subcase has sufficient inputs for a source comparison; it does not cure the missing full-state/recovery fixture.
 
@@ -331,7 +400,7 @@ Conflicts that must not be silently repaired:
 - **M1 versus M9 reducer iteration:** M1 p.2-10 prints final Cv116.2; M9 prints116.6. Independent arithmetic from the rounded `800/(0.97 sqrt(25/0.5))` is approximately116.63617. This demonstrates a discrepancy; it does not establish the unrounded, converged oracle or authorize averaging/loosening tolerance.
 - **M3 viscous example:** the fluid description is oil but a flow-input label says water; Fd and chart-derived FR are example-specific. Resolve intended fluid and chart/standard branch before fixture approval. Do not adopt an Fd=1 rule for ball valves.
 
-Missing independent release-ready benchmarks therefore include base Cv/Kv full-state cases, adopted conversion convention, ordinary-trim choking and boundary cases, all attachment orientations, the adopted low-Re algorithm, physical curve qualification, fluid-state integration, Crane loss and the complete no-double-counting energy budget. Located opening examples and definition checks support early algebra tests but do not clear the module's release gate.
+Missing independent release-ready benchmarks therefore include base Cv/Kv full-state cases, production standard-reference conversion qualification, ordinary-trim choking and boundary cases, all attachment orientations, the adopted low-Re algorithm, physical curve qualification, fluid-state integration, Crane loss and the complete no-double-counting energy budget. Located opening examples and definition checks support early algebra tests but do not clear the module's release gate.
 
 ## 16. Equation and decision traceability matrix
 
@@ -339,12 +408,13 @@ Missing independent release-ready benchmarks therefore include base Cv/Kv full-s
 
 | Equation / decision | P0 section | Source/status | Planned Python function | Planned test | Benchmark | Implementation / release |
 |---|---|---|---|---|---|---|
-| E1a pressure basis | 5,9,10,16 | P0/U1 ID | `normalize_pressures` | `test_absolute_gauge_drop` | B13 | Exact SI ready; psi precision blocked / pending tests |
+| E1a pressure basis | 5,9,10,16 | P0/U1 ID | `normalize_pressures` | `test_absolute_gauge_drop` | B13 | Exact SI/psi definitions §1A ready / pending tests |
 | E1b mass-volume | 4,6,10 | P0 ID | `actual_volume_flow` | `test_frozen_density_mass_basis` | B01,B13 | Ready / independent review |
 | E1c viscosity | 5,9,10 | P0/U1 ID | `kinematic_viscosity` | `test_viscosity_dimensions` | B13 | Ready / independent review |
-| E1d density reference | 5,9 | P0 ID+SV | `normalize_specific_gravity` | `test_reference_density_required` | B01–B03 | Explicit-reference arithmetic ready; standard reference blocked / blocked |
-| E2v/E2k/E2m base sizing | 10–11 | M1/M4/M5 MP+SV | `required_turbulent_coefficient` | `test_base_cv_kv_mass_equivalence` | B01,B02 | Blocked / blocked |
-| E2c / U-C conversion | 9 | M5 P1+SV | `convert_capacity_coefficient` | `test_cv_kv_reference_reciprocity` | B03 | Blocked / blocked |
+| E1d density reference | 5,9 | P0 ID+SV | `normalize_specific_gravity` | `test_reference_density_required` | B01–B03 | prototype_correlated — authorized for visibly labelled trial implementation (§1A only) / production blocked |
+| E2v/E2k base sizing (E2m outside first stage) | 10–11 | M1/M4/M5 MP+SV | `required_turbulent_coefficient` | `test_base_cv_kv_volume_equivalence` | B15 + §1A identities | prototype_correlated — authorized for visibly labelled trial implementation (§1A only) / production blocked |
+| U-Q volumetric flow | 9 | U1/U4 ID; §1A | `normalize_volume_flow` | `test_volume_si_us_equivalence` | §1A identities | prototype_correlated — authorized for visibly labelled trial implementation / production blocked |
+| E2c / U-C conversion | 9 | M5 P1+SV | `convert_capacity_coefficient` | `test_cv_kv_reference_reciprocity` | §1A reciprocal identities | prototype_correlated — authorized for visibly labelled trial implementation (§1A only) / production blocked |
 | E3 installed turbulent | 10–12 | P0/M1 P1+SV | `predict_installed_liquid_flow` | `test_installed_capacity` | B06 | Blocked / blocked |
 | E4 FF | 10,13 | M1/M2 MP+SV | `critical_pressure_ratio` | `test_ff_missing_pc_domain` | B04 | Blocked / blocked |
 | E5 bare limit | 10,13 | M1/M3 MP+SV | `terminal_drop_bare` | `test_bare_choking` | B04,B05 | Blocked / blocked |
@@ -361,7 +431,7 @@ Missing independent release-ready benchmarks therefore include base Cv/Kv full-s
 | Flashing/inlet-phase screening | 3,13,16 | P0 EA; M7 P1; state validation | `screen_flashing` | `test_p2_pv_equality` | B04 + missing boundary fixture | Guard/comparison algebra ready; physical qualification pending / blocked |
 | E11L/E11E/E11R | 14 | P0 EA/ID, M6 P1, MV | `inherent_capacity`, `invert_inherent_travel` | `test_inherent_forward_inverse` | B08,B09 | Idealized algebra ready; actual curve MV / pending independent checks |
 | Zero/below-range/above-rated/quick-opening | 14,16 | P0 EA | `validate_travel_model` | `test_travel_exclusions` | B08,B09 | Ready / pending tests, physical qualification |
-| E12 margin/rating intervals/bands | 15 | P0 EA/ID | `preliminary_rating_target` | `test_margin_is_rating_only` | B14 | Ready on supplied coefficients / pending tests |
+| E12 margin (intervals/bands outside first stage) | 15 | P0 EA/ID | `preliminary_rating_target` | `test_margin_is_rating_only` | B14 | prototype_correlated — authorized for visibly labelled trial implementation (§1A margin only) / production blocked |
 | Enabled cases/incomplete/governing case | 4,15 | P0 EA | `aggregate_case_status` | `test_disabled_and_incomplete_cases` | B14 | Ready / pending tests |
 | Near-zero policy / validated override | 8,16 | P0 EA | `validate_numerical_policy` | `test_floors_and_override_evidence` | B13 | Guard ready; new override requires validation / pending tests |
 | Bounded coefficient/travel iteration | 8,12,14 | P0 proposed numerics; branch SV | `solve_coefficient_bracketed` | `test_bounds_failure_no_result` | B05–B07 | Scaffold only; physical branch/normalization validation blocked / blocked |
@@ -376,23 +446,23 @@ Release-critical conflicts are explicit: method edition/diameter/FR reconciliati
 
 ## 17. Implementation gate and smallest defensible scope
 
-### A. Evidence-ready for initial isolated implementation after a separate request
+### A. Evidence-ready transformations (first-stage authorization limited to §1A)
 
 - E1 SI pressure difference and explicit gauge offset, mass/volume identity, μ/ρ, and density-reference arithmetic with an explicitly supplied reference.
-- Exact SI/metric conversions and U2's inch conversion; source-precision comparison tests with explicit tolerances. Keep unresolved psi and full-precision Cv/Kv conventions out of the released coefficient adapter.
+- Exact SI/metric conversions and U2's inch conversion; source-precision comparison tests with explicit tolerances. Use the §1A psi and shared-reference Cv/Kv convention for trial only; standard reference conventions remain a release gate.
 - Strict finite/unit/pressure-basis/eligibility validation, missing-factor/provenance status, frozen-input schemas, three-case completeness, ownership ledger validation and explicit unsupported-method results.
 - E11 idealized linear/equal-percentage forward/inverse algebra and range guards on externally supplied, same-basis coefficients, clearly separated from real-valve suitability and qualified factor-dependent travel.
-- E12 target-rating margin and preliminary guidance evaluation on supplied valid coefficients. No calculation of required coefficients is implied.
+- E12 target-rating margin and preliminary guidance evaluation on supplied valid coefficients. Required base coefficients are separately authorized only by §1A.
 
 ### B. Still blocked
 
-- **All IEC/ISA sizing branches E2–E10:** no AS equation pack or authorized edition comparison. Manufacturer corroboration has not removed this blocker.
-- Standard water-reference conventions, full-precision Cv/Kv conversion and complete unit-constant tuples; empirical FF domain and coefficient precision.
+- **Production E2–E10 and trial branches outside §1A:** no AS equation pack or authorized edition comparison. Only the six §1A branches have a documented trial exception.
+- Standard water-reference conventions and complete production unit-constant tuples (the shared-reference trial conversion is authorized in §1A); empirical FF domain and coefficient precision.
 - Attached reducer/expander coefficients, taps, FLP/FP domain, signed reference terms and installed-viscous combination.
 - Adopted valve-Re diameter/coefficient basis, thresholds/equality handling, piecewise FR, and justified turbulence evidence without Fd.
 - Case-specific FL/Fd and part-travel factors until sourced and applicable; incipient/significant cavitation thresholds until verified. Damage/suitability prediction remains excluded.
 - Physical-state qualification, independent fluid/Crane/energy-budget oracles, corrected ordinary-trim choking and attachment examples, approved fixture permissions and source-specific tolerances.
 - Proposed choking ε and solver numerical-normalization validation; no unreviewed numerical policy may silently become an engineering acceptance threshold.
-- Mixtures except through the approved provider/applicability gate; generic quick-opening, coupled hydraulics, special/multistage trims and all other deferred scope.
+- All mixtures in this prototype; later extensions still require the approved provider/applicability gate; generic quick-opening, coupled hydraulics, special/multistage trims and all other deferred scope.
 
-**Smallest safe next engine scope:** a pure, deterministic **validation, exact-unit/identity and approved-policy core**, consuming supplied frozen properties and supplied same-basis coefficients. It may expose separately labeled idealized characteristic algebra. It must return `method_not_verified` for required Cv/Kv sizing, choking limits, attached corrections and Reynolds correction, with no completed sizing recommendation. No API, UI, persistence, report or hydraulic-calculation changes belong to that scope. A useful standards-based turbulent sizing engine is the next step only after its authorized equation pack and independent benchmarks are cleared; this record does not claim that step is ready today.
+**Smallest authorized next engine scope:** the six §1A branches with validation/status guards, supplied actual volumetric flow, valve pressure drop and traceable frozen liquid properties. Return `verification_status="prototype_correlated"` and mandatory trial limitations. No completed choking/cavitation or corrected-viscosity claim. The [MVP first-stage plan](control_valve_mvp_plan.md#0-first-engine-stage--limited-prototype) governs tests and isolation. All other physical methods and production integration remain blocked. This documentation task implements no code.
