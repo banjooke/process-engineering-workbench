@@ -10,6 +10,8 @@ import {
 
 import UserAccount from "@/components/UserAccount";
 import { apiFetch } from "@/lib/api";
+import { readApiError } from "@/lib/api-error";
+import { requirePumpReportFluidConfig } from "@/lib/pump-report";
 import EngineeringServiceStatus from "@/components/EngineeringServiceStatus";
 
 import {
@@ -485,7 +487,7 @@ type SystemCurveResult = {
 
 
 type PumpSizingResult = {
-  resolved_fluid_config: Record<string, unknown>;
+  resolved_fluid_config?: Record<string, unknown>;
   phase_type: string;
   design_flow_value: number;
   flow_unit: string;
@@ -4093,14 +4095,8 @@ export default function Home() {
             });
 
             if (!pumpResponse.ok) {
-              let detail = `Unable to calculate pump scenario “${scenario.name}” (${pumpResponse.status}).`;
-              try {
-                const body = await pumpResponse.json();
-                detail = body?.detail ?? detail;
-              } catch {
-                // Keep fallback.
-              }
-              throw new Error(detail);
+              throw new Error(await readApiError(pumpResponse,
+                `Unable to calculate pump scenario "${scenario.name}" (${pumpResponse.status}).`));
             }
 
             const scenarioPumpResult: PumpSizingResult = await pumpResponse.json();
@@ -4113,7 +4109,7 @@ export default function Home() {
               name: scenario.name,
               description: scenario.description,
               engineering_task: "pump_sizing",
-              fluid_config: scenarioPumpResult.resolved_fluid_config,
+              fluid_config: requirePumpReportFluidConfig(scenarioPumpResult, `Scenario "${scenario.name}"`),
               flow_value: scenario.flow_value,
               flow_unit: normalizeFlowUnit(scenario.flow_unit),
               source_pressure_bar_a: sourcePressure,
@@ -4141,14 +4137,8 @@ export default function Home() {
           );
 
           if (!response.ok) {
-            let detail = `Pump project report generation failed (${response.status}).`;
-            try {
-              const body = await response.json();
-              detail = body?.detail ?? detail;
-            } catch {
-              // Keep fallback.
-            }
-            throw new Error(detail);
+            throw new Error(await readApiError(response,
+              `Pump project report generation failed (${response.status}).`));
           }
 
           const blob = await response.blob();
@@ -4179,7 +4169,7 @@ export default function Home() {
                 (selectedScenario?.name
                   ? `Pump Sizing - ${selectedScenario.name}`
                   : "Pump Sizing Analysis"),
-              fluid_config: pumpResult.resolved_fluid_config,
+              fluid_config: requirePumpReportFluidConfig(pumpResult, "Current pump calculation"),
               flow_value: Number(flowValue),
               flow_unit: normalizeFlowUnit(flowUnit),
               source_pressure_bar_a: Number(pumpSourcePressure),
@@ -4195,15 +4185,8 @@ export default function Home() {
         );
 
         if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          const detail = body?.detail;
-          throw new Error(
-            typeof detail === "string"
-              ? detail
-              : detail
-                ? JSON.stringify(detail)
-                : `Unable to generate pump-sizing report (${response.status}).`
-          );
+          throw new Error(await readApiError(response,
+            `Unable to generate pump-sizing report (${response.status}).`));
         }
 
         const blob = await response.blob();

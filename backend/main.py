@@ -3,7 +3,7 @@ from typing import Any, Literal
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from engineering.hydraulics import (
     calculate_velocity,
@@ -247,6 +247,25 @@ class PumpSizingInput(BaseModel):
     @classmethod
     def normalize_pump_sizing_flow_unit(cls, value):
         return normalize_flow_unit(str(value))
+
+
+class ResolvedPumpFluidConfig(BaseModel):
+    """Required source-state properties; never substitute default liquid values."""
+
+    model_config = ConfigDict(extra="allow")
+
+    phase_type: Literal["Liquid"]
+    use_manual_properties: Literal[True]
+    density_kg_m3: float = Field(gt=0, allow_inf_nan=False)
+    dynamic_viscosity_pa_s: float = Field(gt=0, allow_inf_nan=False)
+    vapor_pressure_bar_a: float = Field(ge=0, allow_inf_nan=False)
+
+
+class PumpSizingResponse(BaseModel):
+    # Preserve the complete engineering result while enforcing this shared contract.
+    model_config = ConfigDict(extra="allow")
+
+    resolved_fluid_config: ResolvedPumpFluidConfig
 
 
 class HydraulicPromptRequest(BaseModel):
@@ -643,7 +662,8 @@ def hydraulics_system_curve(request: SystemCurveInput):
         ) from exc
 
 
-@app.post("/hydraulics/pump-sizing", dependencies=[Depends(get_current_user_id)])
+@app.post("/hydraulics/pump-sizing", response_model=PumpSizingResponse,
+          dependencies=[Depends(get_current_user_id)])
 def hydraulics_pump_sizing(request: PumpSizingInput):
     try:
         fluid_config = request.fluid_config.model_dump()
