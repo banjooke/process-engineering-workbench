@@ -161,5 +161,65 @@ class PumpCurveTests(unittest.TestCase):
         pump.assert_not_called()
 
 
+    def test_calculation_response_to_pdf_and_docx_project_report(self):
+        for extension in ['pdf', 'docx']:
+            with self.subTest(extension=extension):
+                self.provider.reset_mock()
+                response = self.client.post('/hydraulics/pump-sizing', json=self.duty_payload())
+                self.assertEqual(response.status_code, 200, response.text)
+                duty = response.json()
+                frozen = duty['resolved_fluid_config']
+                self.assertTrue(frozen['use_manual_properties'])
+                for field, value in PROPERTIES.items():
+                    self.assertEqual(frozen[field], value)
+                # Match the frontend project builder after JSON serialization.
+                scenario = {**self.duty_payload(frozen), 'name': 'Source lift',
+                            'flow_value': 5, 'result': duty, 'system_curve': None,
+                            'engineering_task': 'pump_sizing'}
+                payload = {'project_title': 'Pump project', 'scenarios': [scenario]}
+                with patch.object(self.api, f'create_pump_project_{extension}_report',
+                                  return_value='unused') as writer, \
+                     patch.object(self.api, 'FileResponse', return_value=Response(b'report')):
+                    report = self.client.post(f'/reports/pump-sizing/project/{extension}', json=payload)
+                self.assertEqual(report.status_code, 200, report.text)
+                prepared = writer.call_args.args[0]['scenarios'][0]
+                self.assertEqual(prepared['fluid_config'], frozen)
+                self.assertEqual(prepared['result']['pump_duty'], duty['pump_duty'])
+                self.assertAlmostEqual(prepared['system_curve']['design_point']['total_head_m'],
+                                       duty['system']['total_head_m'])
+                self.provider.assert_called_once()  # Resolved only at the real 1.2-bar source.
+
+    def test_production_missing_fluid_payload_reproduces_422(self):
+        for extension in ['pdf', 'docx']:
+            with self.subTest(extension=extension):
+                scenario = {**self.duty_payload(), 'name': 'Source lift',
+                            'flow_value': 5, 'result': {}}
+                del scenario['fluid_config']  # JSON.stringify omitted undefined.
+                response = self.client.post(f'/reports/pump-sizing/project/{extension}',
+                                            json={'scenarios': [scenario]})
+                self.assertEqual(response.status_code, 422)
+                self.assertIn({'type': 'missing',
+                               'loc': ['body', 'scenarios', 0, 'fluid_config'],
+                               'msg': 'Field required'},
+                              [{key: error[key] for key in ['type', 'loc', 'msg']}
+                               for error in response.json()['detail']])
+        self.provider.assert_not_called()
+
+    def test_response_contract_rejects_missing_or_incomplete_frozen_config(self):
+        from fastapi.exceptions import ResponseValidationError
+        for result in [{}, {'resolved_fluid_config': {}},
+                       {'resolved_fluid_config': {**MANUAL, 'vapor_pressure_bar_a': None}}]:
+            with self.subTest(result=result), \
+                 patch.object(self.api, 'size_pump_duty', return_value=result):
+                with self.assertRaises(ResponseValidationError):
+                    self.client.post('/hydraulics/pump-sizing', json=self.duty_payload())
+
+    def test_openapi_requires_resolved_fluid_configuration(self):
+        schemas = self.api.app.openapi()['components']['schemas']
+        self.assertIn('resolved_fluid_config', schemas['PumpSizingResponse']['required'])
+        for field in ['density_kg_m3', 'dynamic_viscosity_pa_s', 'vapor_pressure_bar_a']:
+            self.assertIn(field, schemas['ResolvedPumpFluidConfig']['required'])
+
+
 if __name__ == '__main__':
     unittest.main()
