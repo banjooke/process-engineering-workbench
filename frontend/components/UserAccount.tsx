@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function UserAccount() {
+export default function UserAccount({ beforeSignOut }: { beforeSignOut?: () => boolean }) {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -27,6 +27,7 @@ export default function UserAccount() {
   }, []);
 
   async function handleSignOut() {
+    if (beforeSignOut && !beforeSignOut()) return;
     setSigningOut(true);
 
     const supabase = createClient();

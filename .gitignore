@@ -54,3 +54,6 @@ htmlcov/
 
 # Generated report artifacts
 reports/generated/
+
+# Local development database and backups
+/process_engineering_workbench.db*

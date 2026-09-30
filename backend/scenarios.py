@@ -6,7 +6,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlmodel import Session, select
 
 from database.db import get_session
@@ -24,13 +24,29 @@ class ScenarioPayload(BaseModel):
         "pressure_drop",
         "outlet_pressure",
         "pressure_profile",
+        "control_valve_sizing",
     ] = "pressure_drop"
-    flow_value: float = Field(gt=0)
+    flow_value: float = Field(ge=0)
     flow_unit: str = "m³/h"
     inlet_pressure_bar_a: float | None = None
     property_reference_pressure_bar_a: float | None = None
     fluid_config: dict[str, Any]
     elements: list[dict[str, Any]]
+
+
+    @model_validator(mode="after")
+    def validate_task_flow(self):
+        valve = self.fluid_config.get("engineering_task") == "control_valve_sizing"
+        if valve != (self.calculation_intent == "control_valve_sizing"):
+            raise ValueError("Control-valve scenarios require matching engineering task and calculation intent.")
+        # Zero marks an unconfigured valve draft in the existing non-null column.
+        # It is never sent to a sizing engine; other tasks retain positive flow.
+        document = self.fluid_config.get("control_valve")
+        if valve and not isinstance(document, dict):
+            raise ValueError("Control-valve scenarios require a versioned input document.")
+        if self.flow_value == 0 and not (valve and document.get("result") is None):
+            raise ValueError("A calculated scenario requires positive flow.")
+        return self
 
 
 class ScenarioResponse(BaseModel):
@@ -182,6 +198,10 @@ def update_scenario(
 ):
     project = _require_project(project_id, user_id, session)
     scenario = _get_scenario(project_id, scenario_id, session)
+    existing_task = json.loads(scenario.fluid_config_json).get("engineering_task")
+    incoming_task = payload.fluid_config.get("engineering_task")
+    if existing_task != incoming_task and "control_valve_sizing" in (existing_task, incoming_task):
+        raise HTTPException(status_code=409, detail="A scenario cannot be changed to another engineering task. Create a new scenario instead.")
 
     scenario.name = payload.name.strip()
     scenario.description = payload.description

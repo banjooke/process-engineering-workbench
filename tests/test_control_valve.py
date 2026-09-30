@@ -167,8 +167,8 @@ class ControlValveTests(unittest.TestCase):
     def test_no_silent_manual_automatic_blending(self):
         c = automatic()
         c['fluid_config']['density_kg_m3'] = 1000.0
-        with self.assertRaises(ValueError):
-            self.result(c)
+        with patch.object(cv.fluids, 'get_fluid_properties', return_value=PROPERTIES):
+            self.assertEqual(self.result(c).cases[0].resolved_fluid_config.density_kg_m3, 997.0)
 
     def test_normal_only(self):
         r = self.result()

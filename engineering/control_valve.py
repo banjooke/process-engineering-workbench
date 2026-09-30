@@ -55,16 +55,24 @@ class ManualSource(Model):
 
 
 class FluidConfig(Model):
-    """Existing fluid vocabulary without the legacy model's water defaults.
+    """Shared automatic fluid vocabulary without the legacy water defaults.
 
+    Automatic preview density, viscosity and vapor pressure are accepted for
+    pump-config compatibility but never used. OperatingCase P/T is authoritative.
     Manual mode is a complete, explicit property snapshot, not silent fallback or
     partial blending with automatic data. SG requires its own reference density.
     """
     fluid: Text
     phase_type: Literal["Liquid"]
-    composition: Literal["pure"]
-    rheology: Literal["Newtonian"]
+    composition: Literal["pure"] = "pure"
+    rheology: Literal["Newtonian"] = "Newtonian"
     use_manual_properties: bool
+    # Shared automatic configuration can include cached preview properties.
+    # Always resolve fresh at the operating case's real upstream conditions.
+    temperature_c: float | None = None
+    molecular_weight_kg_kmol: float | None = None
+    compressibility_factor: float | None = None
+    gamma: float | None = None
     density_kg_m3: Positive | None = None
     specific_gravity: Positive | None = None
     sg_reference_density_kg_m3: Positive | None = None
@@ -75,11 +83,6 @@ class FluidConfig(Model):
 
     @model_validator(mode="after")
     def validate_mode(self):
-        properties = (
-            self.density_kg_m3, self.specific_gravity,
-            self.sg_reference_density_kg_m3, self.dynamic_viscosity_pa_s,
-            self.vapor_pressure_bar_a, self.critical_pressure_bar_a,
-        )
         if self.use_manual_properties:
             if self.manual_source is None:
                 raise ValueError("Manual properties require source, edition, reason and actor.")
@@ -87,10 +90,10 @@ class FluidConfig(Model):
                 raise ValueError("Supply exactly one of density or explicitly based specific gravity.")
             if (self.specific_gravity is None) != (self.sg_reference_density_kg_m3 is None):
                 raise ValueError("Specific gravity requires its reference density.")
-        elif any(v is not None for v in properties) or self.manual_source is not None:
+        elif any(v is not None for v in (self.specific_gravity, self.sg_reference_density_kg_m3, self.critical_pressure_bar_a)) or self.manual_source is not None:
             raise ValueError("Automatic properties cannot silently mix with manual overrides.")
-        elif self.fluid not in {item["id"] for item in fluids.CURATED_FLUIDS}:
-            raise ValueError("Automatic prototype requires a curated pure-fluid ID; mixtures are unsupported.")
+        elif not fluids.get_liquid_capability(self.fluid)["eligible"]:
+            raise ValueError(fluids.get_liquid_capability(self.fluid)["reason"])
         return self
 
 
@@ -289,8 +292,9 @@ def resolve_liquid(case: OperatingCase, si: NormalizedSI) -> ResolvedLiquidPrope
             fluid=config.fluid, temperature_c=si.temperature_k - 273.15,
             pressure_bar_a=si.upstream_pressure_pa_abs / 100000,
         )
-        if raw.get("phase_type") != "Liquid" or raw.get("phase_label", "liquid") not in ("liquid", "l"):
+        if raw.get("phase_type") != "Liquid" or raw.get("phase_label") not in ("liquid", "l"):
             raise ValueError("Property provider did not confirm a single-phase liquid inlet.")
+        _positive(raw.get("dynamic_viscosity_pa_s"), "Resolved liquid viscosity")
         provider = raw.get("_property_provider")
         try:
             provider_version = version(provider) if provider else None
