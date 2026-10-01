@@ -7,7 +7,14 @@ import * as React from 'react';
 import * as jsx from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+const authDestination = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/auth-destination.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports: authDestination, URL });
+
 function load(path, imports = {}, globals = {}) {
+  imports = { '@/lib/auth-destination': authDestination, ...imports };
+  globals = { URL, ...(path.includes('/login/') || path.includes('/signup/') ? { window: { location: { href: 'https://workbench.test/login' } } } : {}), ...globals };
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, require: id => { assert.ok(id in imports, id); return imports[id]; }, ...globals });
@@ -269,3 +276,29 @@ test('sign-out returns to login without touching the saved workspace, and login 
   await nodes(Login()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
   assert.deepEqual(calls, ['signed out', '/login', '/?workspace=home']);
 });
+
+for (const [next, expected] of [
+  [undefined, '/?workspace=home'], ['', '/?workspace=home'], ['/', '/?workspace=home'],
+  ['https://workbench.test/', '/?workspace=home'],
+  ['/update-password?mode=recovery#form', '/update-password?mode=recovery#form'],
+  ['https://external.test', '/?workspace=home'], ['//external.test', '/?workspace=home'],
+  ['%2f%2fexternal.test', '/?workspace=home'], ['/%252f%252fexternal.test', '/?workspace=home'],
+  ['/?workspace=general&workspace=home&keep=1', '/?workspace=home&keep=1'],
+]) {
+  for (const page of ['login', 'signup']) test(`${page} successful session normalizes next=${JSON.stringify(next)}`, async () => {
+    const url = new URL(`/${page}`, 'https://workbench.test');
+    if (next !== undefined) url.searchParams.set('next', next);
+    const calls = [];
+    const Page = load(`../app/${page}/page.tsx`, {
+      react: { useState: initial => [initial, () => {}] }, 'react/jsx-runtime': jsx,
+      'next/link': { default: 'a' },
+      'next/navigation': { useRouter: () => ({ push: path => calls.push(path), refresh: () => calls.push('refresh') }) },
+      '@/lib/supabase/client': { createClient: () => ({ auth: {
+        signInWithPassword: async () => ({ error: null }),
+        signUp: async () => ({ error: null, data: { session: {} } }),
+      } }) },
+    }, { window: { location: { href: url.href } } }).default;
+    await nodes(Page()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+    assert.deepEqual(calls, [expected, 'refresh']);
+  });
+}
