@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { authenticationDestination } from "@/lib/auth-destination";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -33,7 +34,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/?workspace=home");
+    const loginUrl = new URL(window.location.href);
+    router.push(authenticationDestination(loginUrl.searchParams.get("next"), loginUrl.origin));
     router.refresh();
   }
 

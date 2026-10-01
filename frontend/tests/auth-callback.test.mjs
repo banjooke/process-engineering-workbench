@@ -5,6 +5,11 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import * as nextServer from 'next/server.js';
 
+const destinationExports = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/auth-destination.ts', import.meta.url), 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+}).outputText, { exports: destinationExports, URL });
+
 // Execute the actual handler, with only Supabase replaced; no server or network.
 function loadHandler(error = null) {
   const calls = [];
@@ -17,6 +22,7 @@ function loadHandler(error = null) {
     exports, URL,
     require(name) {
       if (name === 'next/server') return nextServer;
+      if (name === '@/lib/auth-destination') return destinationExports;
       if (name === '@/lib/supabase/server') return {
         createClient: async () => ({ auth: {
           exchangeCodeForSession: async (code) => { calls.push(code); return { error }; },
@@ -90,25 +96,55 @@ test('root callback replaces conflicting workspace values and preserves unrelate
   assert.equal(result.location, 'https://workbench.test/?workspace=home&keep=1#saved');
 });
 
-test('Home signal does not bypass authentication for direct access', async () => {
+function loadProxy(authenticated) {
   const exports = {};
   const source = readFileSync(new URL('../lib/supabase/proxy.ts', import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText;
   vm.runInNewContext(compiled, {
-    exports, process: { env: {} },
+    exports, URL, process: { env: {} },
     require(name) {
       if (name === 'next/server') return nextServer;
+      if (name === '@/lib/auth-destination') return destinationExports;
       if (name === '@supabase/ssr') return {
-        createServerClient: () => ({ auth: { getClaims: async () => ({ data: null }) } }),
+        createServerClient: () => ({ auth: { getClaims: async () => ({ data: authenticated ? { claims: {} } : null }) } }),
       };
       throw new Error(`Unexpected import: ${name}`);
     },
   });
-  const response = await exports.updateSession(new nextServer.NextRequest('https://workbench.test/?workspace=home'));
+  return exports.updateSession;
+}
+
+test('Home signal does not bypass authentication for direct access', async () => {
+  const response = await loadProxy(false)(new nextServer.NextRequest('https://workbench.test/?workspace=home'));
   const destination = new URL(response.headers.get('location'));
   assert.equal(destination.origin, 'https://workbench.test');
   assert.equal(destination.pathname, '/login');
   assert.equal(destination.searchParams.get('next'), '/');
+});
+
+const defaults = [undefined, '', '/', 'https://workbench.test', 'https://workbench.test/'];
+const unsafe = ['https://external.test', '//external.test', '%2f%2fexternal.test', '/%2fexternal.test',
+  '%68ttps%3a%2f%2fexternal.test', '/%252f%252fexternal.test', '/%5cexternal.test', '/bad%zz',
+  'https://user:password@workbench.test/', '/a%0db', '/a/..//external.test'];
+const meaningful = '/update-password?mode=recovery#form';
+const cases = [...defaults, ...unsafe].map(next => [next, '/?workspace=home']);
+cases.push([meaningful, meaningful], ['/?workspace=general&workspace=home&keep=1#saved', '/?workspace=home&keep=1#saved']);
+for (const [next, expected] of cases) {
+  test(`callback and authenticated login/signup proxy normalize ${JSON.stringify(next)}`, async () => {
+    assert.equal((await redirect(next, { code: 'confirmation-code' })).location, `https://workbench.test${expected}`);
+    for (const path of ['/login', '/signup']) {
+      const url = new URL(path, 'https://workbench.test');
+      if (next !== undefined) url.searchParams.set('next', next);
+      url.searchParams.set('unrelatedLoginParameter', 'not-forwarded');
+      const response = await loadProxy(true)(new nextServer.NextRequest(url));
+      assert.equal(response.headers.get('location'), `https://workbench.test${expected}`);
+    }
+  });
+}
+
+test('authenticated root refresh is not redirected or given a fresh-login signal', async () => {
+  const response = await loadProxy(true)(new nextServer.NextRequest('https://workbench.test/'));
+  assert.equal(response.headers.get('location'), null);
 });
