@@ -1,13 +1,23 @@
 "use client";
 
+import { loadFluidCatalogue, type FluidCatalogueItem } from "@/lib/fluid-catalogue";
+
 import {
   ReactNode,
   useEffect,
+  useCallback,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import IndustrySelector from "@/components/IndustrySelector";
+import ModuleWorkspace from "@/components/ModuleWorkspace";
+import { INDUSTRIES, type ModuleAction } from "@/lib/module-registry";
+import { useIndustryWorkspace } from "@/lib/use-industry-workspace";
+import ControlValveProjectWorkflow from "@/components/ControlValveProjectWorkflow";
+import ProjectSelection from "@/components/ProjectSelection";
+import { listProjects, createProjectRecord, listScenarioRecords, isValveScenario, confirmScenarioDeletion, type ProjectSummary, type ScenarioRecord } from "@/lib/projects";
 import UserAccount from "@/components/UserAccount";
 import { apiFetch } from "@/lib/api";
 import { readApiError } from "@/lib/api-error";
@@ -102,16 +112,6 @@ type FluidProperties = {
 
   molecular_weight_kg_kmol:
     number | null;
-};
-
-
-type FluidCatalogueItem = {
-  id: string;
-  name: string;
-  formula: string | null;
-  category: string | null;
-  aliases: string[];
-  cas?: string | null;
 };
 
 
@@ -541,13 +541,7 @@ type PumpSizingResult = {
 };
 
 
-type ProjectSummary = {
-  id: number;
-  name: string;
-  description: string | null;
-  created_at: string;
-  updated_at: string;
-};
+
 
 type SavedHydraulicModel = {
   id: number;
@@ -563,20 +557,8 @@ type SavedHydraulicModel = {
   updated_at: string;
 };
 
-type SavedScenario = {
-  id: number;
-  project_id: number;
-  name: string;
-  description: string | null;
+type SavedScenario = Omit<ScenarioRecord<LineElement>, "calculation_intent"> & {
   calculation_intent: "pressure_drop" | "outlet_pressure" | "pressure_profile";
-  flow_value: number;
-  flow_unit: string;
-  inlet_pressure_bar_a: number | null;
-  property_reference_pressure_bar_a: number | null;
-  fluid_config: Record<string, unknown>;
-  elements: LineElement[];
-  created_at: string;
-  updated_at: string;
 };
 
 
@@ -616,6 +598,9 @@ const inputClass =
 // ============================================================
 
 export default function Home() {
+  const workspace = useIndustryWorkspace();
+  const valveExitGuard = useRef<() => boolean>(() => true);
+  const registerValveExitGuard = useCallback((guard: () => boolean) => { valveExitGuard.current = guard; }, []);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const loadedProjectId = useRef<string | null>(null);
 
@@ -654,7 +639,7 @@ export default function Home() {
   const [workingScenarioDescription, setWorkingScenarioDescription] = useState("");
 
   // Guided one-page-at-a-time workflow
-  const [wizardStep, setWizardStep] = useState<"tasks" | "project" | "overview" | "analysis" | "method" | "engineering">("tasks");
+  const [wizardStep, setWizardStep] = useState<"tasks" | "project" | "overview" | "analysis" | "method" | "engineering" | "control_valve">("tasks");
   const [engineeringTask, setEngineeringTask] = useState<"pressure_drop" | "system_curve" | "pump_sizing" | null>(null);
   const [analysisType, setAnalysisType] = useState<"single" | "scenario" | null>(null);
 
@@ -677,6 +662,7 @@ export default function Home() {
   ] =
     useState<FluidCatalogueItem[]>([]);
 
+  const [fluidCatalogueError, setFluidCatalogueError] = useState<string | null>(null);
   const [fluidSearch, setFluidSearch] = useState("Water");
   const [fluidSearchResults, setFluidSearchResults] =
     useState<FluidCatalogueItem[]>([]);
@@ -988,13 +974,7 @@ export default function Home() {
   // ========================================================
 
   async function refreshProjects(selectNewest = false, signal?: AbortSignal) {
-    const response = await apiFetch(`${API_BASE_URL}/projects`, { signal });
-
-    if (!response.ok) {
-      throw new Error(`Unable to load projects (${response.status}).`);
-    }
-
-    const data: ProjectSummary[] = await response.json();
+    const data = await listProjects(API_BASE_URL, signal);
     signal?.throwIfAborted();
     setProjects(data);
 
@@ -1018,21 +998,7 @@ export default function Home() {
     setProjectStatus("Creating project…");
 
     try {
-      const response = await apiFetch(`${API_BASE_URL}/projects`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          description: newProjectDescription.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.detail ?? `Unable to create project (${response.status}).`);
-      }
-
-      const project: ProjectSummary = await response.json();
+      const project = await createProjectRecord(API_BASE_URL, name, newProjectDescription.trim() || null);
       await refreshProjects();
       setSelectedProjectId(String(project.id));
       setNewProjectName("");
@@ -1477,13 +1443,8 @@ export default function Home() {
       return [];
     }
 
-    const response = await apiFetch(`${API_BASE_URL}/projects/${projectId}/scenarios`, { signal });
-
-    if (!response.ok) {
-      throw new Error(`Unable to load scenarios (${response.status}).`);
-    }
-
-    const data: SavedScenario[] = await response.json();
+    const rows = await listScenarioRecords<LineElement>(API_BASE_URL, Number(projectId), signal);
+    const data = rows.filter((row): row is SavedScenario => !isValveScenario(row) && row.calculation_intent !== "control_valve_sizing");
     signal?.throwIfAborted();
     setScenarios(data);
 
@@ -1938,9 +1899,7 @@ export default function Home() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete scenario “${scenario.name}”? This removes only this design case and cannot be undone.`
-    );
+    const confirmed = confirmScenarioDeletion(scenario.name);
     if (!confirmed) return;
 
     setScenarioLoading(true);
@@ -2505,9 +2464,7 @@ export default function Home() {
           fittingsLoad,
         ] =
           await Promise.allSettled([
-            apiFetch(
-              `${API_BASE_URL}/fluids`, { signal: controller.signal }
-            ),
+            loadFluidCatalogue(API_BASE_URL, controller.signal),
 
             apiFetch(
               `${API_BASE_URL}/piping/catalog`, { signal: controller.signal }
@@ -2520,32 +2477,14 @@ export default function Home() {
 
 
         if (controller.signal.aborted) return;
-        const fluidsResponse = fluidsLoad.status === "fulfilled" ? fluidsLoad.value : null;
         const pipingResponse = pipingLoad.status === "fulfilled" ? pipingLoad.value : null;
         const fittingsResponse = fittingsLoad.status === "fulfilled" ? fittingsLoad.value : null;
-
-        if (
-          fluidsResponse?.ok
-        ) {
-          const data =
-            await fluidsResponse.json();
-          if (controller.signal.aborted) return;
-
-          const catalogue: FluidCatalogueItem[] =
-            Array.isArray(data.catalogue)
-              ? data.catalogue
-              : Array.isArray(data.fluids)
-                ? data.fluids.map((fluid: string) => ({
-                    id: fluid,
-                    name: fluid,
-                    formula: null,
-                    category: null,
-                    aliases: [],
-                  }))
-                : [];
-
-          setAvailableFluids(catalogue);
-          setFluidSearchResults(catalogue.slice(0, 20));
+        if (fluidsLoad.status === "fulfilled") {
+          setAvailableFluids(fluidsLoad.value);
+          setFluidSearchResults(fluidsLoad.value.slice(0, 20));
+          setFluidCatalogueError(null);
+        } else {
+          setFluidCatalogueError(fluidsLoad.reason instanceof Error ? fluidsLoad.reason.message : "Fluid catalogue loading failed. Please retry.");
         }
 
 
@@ -2613,20 +2552,9 @@ export default function Home() {
       setFluidSearchLoading(true);
 
       try {
-        const response = await apiFetch(
-          `${API_BASE_URL}/fluids/search?q=${encodeURIComponent(query)}&limit=30`,
-          { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Fluid search failed (${response.status}).`);
-        }
-
-        const data = await response.json();
+        const rows = await loadFluidCatalogue(API_BASE_URL, controller.signal, query);
         if (controller.signal.aborted) return;
-        setFluidSearchResults(
-          Array.isArray(data.fluids) ? data.fluids : []
-        );
+        setFluidSearchResults(rows);
       } catch (err) {
         if (controller.signal.aborted) return;
         console.error("Fluid search error:", err);
@@ -4777,6 +4705,20 @@ export default function Home() {
     }
   }
 
+  function launchModule(action: ModuleAction) {
+    const currentAction = wizardStep === "control_valve" ? "control_valve" : wizardStep === "tasks" ? null : engineeringTask;
+    if (currentAction === action) { workspace.enterModule(); return; }
+    if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
+    if (action === "control_valve") {
+      setEngineeringTask(null); setWizardStep("control_valve");
+    } else {
+      setEngineeringTask(action); setWizardStep("project"); setAnalysisType(null);
+      if (action === "pump_sizing") setPumpResult(null);
+    }
+    workspace.enterModule();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // ========================================================
   // PAGE
   // ========================================================
@@ -4787,7 +4729,7 @@ export default function Home() {
 
       <header className="border-b bg-white">
 
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-6">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-6 py-6 sm:flex-row sm:items-center">
 
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -4795,27 +4737,22 @@ export default function Home() {
             </h1>
 
             <p className="mt-1 text-gray-500">
-              Fluid Flow & Hydraulics
+              {INDUSTRIES.find(industry => industry.id === workspace.industry)?.title ?? "Engineering tools for your industry"}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
   <button
     type="button"
-    onClick={() => {
-      setActivePage("assistant");
-      setWizardStep("tasks");
-      setEngineeringTask(null);
-      setAnalysisType(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }}
+    onClick={() => workspace.showModules()}
     className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
-    title="Return to the Workbench home"
+    title="Return to engineering modules"
   >
-    Home
+    Modules
   </button>
+  <button type="button" onClick={() => workspace.goHome(() => wizardStep !== "control_valve" || valveExitGuard.current())} className="rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Home</button>
 
-  <UserAccount />
+  <UserAccount beforeSignOut={() => wizardStep !== "control_valve" || valveExitGuard.current()} />
 </div>
         </div>
 
@@ -4824,117 +4761,10 @@ export default function Home() {
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         <EngineeringServiceStatus onRetryLoads={() => setLoadAttempt((attempt) => attempt + 1)} />
-
-        {wizardStep !== "overview" && wizardStep !== "tasks" && (
-        <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">
-          {[
-            ["project", "1", "Project"],
-            ["analysis", "2", "Analysis"],
-            ["method", "3", "Method"],
-            ["engineering", "4", "Define & Calculate"],
-          ].map(([key, number, label]) => {
-            const order = ["project", "analysis", "method", "engineering"];
-            const current = order.indexOf(wizardStep);
-            const item = order.indexOf(key);
-            const active = key === wizardStep;
-            const complete = item < current;
-            return (
-              <div key={key} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${active ? "border-teal-700 bg-teal-700 text-white" : complete ? "border-teal-200 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-400"}`}>
-                <span className="font-bold">{complete ? "✓" : number}</span>
-                <span className="font-medium">{label}</span>
-              </div>
-            );
-          })}
-        </div>
-        )}
-
-        {wizardStep === "tasks" && (
-          <section className="mx-auto max-w-6xl">
-            <div className="mb-7 text-center">
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">
-                Hydraulics Workbench
-              </div>
-              <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                What engineering task do you want to perform?
-              </h2>
-              <p className="mx-auto mt-3 max-w-3xl text-gray-600">
-                Start a new hydraulic analysis or reopen an existing project.
-                Engineering tasks share the same validated fluid, piping, fitting and calculation infrastructure.
-              </p>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("pressure_drop");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">Pressure Drop / Line Analysis</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Calculate line losses, pressure profile, velocities, Reynolds number and engineering checks.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("system_curve");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">System Curve Generator</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Define or load a liquid hydraulic system and generate system head versus flow.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("pump_sizing");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  setPumpResult(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">Pump Sizing</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Determine the required liquid pump duty, differential head and preliminary power requirement from the hydraulic system.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-            </div>
-
+        {workspace.view === "industries" && <IndustrySelector selected={workspace.industry} onSelect={workspace.chooseIndustry} />}
+        {workspace.view === "modules" && workspace.industry && (
+          <ModuleWorkspace industry={workspace.industry} onLaunch={launchModule}
+            onResume={wizardStep !== "tasks" ? workspace.enterModule : undefined}>
             <div className="mt-7 rounded-2xl border border-black bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -4945,6 +4775,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
+                    workspace.enterModule();
                     setEngineeringTask("pressure_drop");
                     setWizardStep("project");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4973,7 +4805,9 @@ export default function Home() {
                         key={project.id}
                         type="button"
                         onClick={() => {
+                          if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
                           setSelectedProjectId(String(project.id));
+                          workspace.enterModule();
                           setEngineeringTask("pressure_drop");
                           setWizardStep("overview");
                           setAnalysisType("scenario");
@@ -4997,7 +4831,38 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </section>
+          </ModuleWorkspace>
+        )}
+        {/* Keep active project/scenario components mounted while browsing industries. */}
+        <div hidden={workspace.view !== "module"}>
+
+        {wizardStep !== "overview" && wizardStep !== "tasks" && wizardStep !== "control_valve" && (
+        <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">
+          {[
+            ["project", "1", "Project"],
+            ["analysis", "2", "Analysis"],
+            ["method", "3", "Method"],
+            ["engineering", "4", "Define & Calculate"],
+          ].map(([key, number, label]) => {
+            const order = ["project", "analysis", "method", "engineering"];
+            const current = order.indexOf(wizardStep);
+            const item = order.indexOf(key);
+            const active = key === wizardStep;
+            const complete = item < current;
+            return (
+              <div key={key} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${active ? "border-teal-700 bg-teal-700 text-white" : complete ? "border-teal-200 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-400"}`}>
+                <span className="font-bold">{complete ? "✓" : number}</span>
+                <span className="font-medium">{label}</span>
+              </div>
+            );
+          })}
+        </div>
+        )}
+
+        {wizardStep === "control_valve" && (
+          <ControlValveProjectWorkflow registerExitGuard={registerValveExitGuard} onExit={() => workspace.showModules()} apiBaseUrl={API_BASE_URL} fluids={availableFluids}
+            catalogueError={fluidCatalogueError} catalogueLoading={databaseLoading}
+            onRetryFluids={() => setLoadAttempt((attempt) => attempt + 1)} />
         )}
 
         {wizardStep === "project" && (
@@ -5014,38 +4879,12 @@ export default function Home() {
               <h2 className="mt-2 text-2xl font-bold text-gray-900">Create or open a project</h2>
               <p className="mt-2 text-gray-500">A project is the engineering study that will contain your hydraulic model and, when required, its design scenarios.</p>
             </div>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-2xl border border-teal-100 bg-teal-50/50 p-5">
-                <h3 className="font-semibold text-gray-900">Create New Project</h3>
-                <input className={`${inputClass} mt-4`} value={newProjectName} onChange={(e) => setNewProjectName(e.target.value)} placeholder="Project name" />
-                <input className={`${inputClass} mt-3`} value={newProjectDescription} onChange={(e) => setNewProjectDescription(e.target.value)} placeholder="Description (optional)" />
-                <button type="button" onClick={() => void createProject()} disabled={projectLoading} className="mt-4 w-full rounded-lg bg-teal-700 px-5 py-3 font-semibold text-white disabled:opacity-50">Create Project</button>
-              </div>
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
-                <h3 className="font-semibold text-gray-900">Open Existing Project</h3>
-                <select className={`${inputClass} mt-4`} value={selectedProjectId} onChange={(e) => { setSelectedProjectId(e.target.value); setProjectStatus(""); }}>
-                  <option value="">Select project…</option>
-                  {projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
-                </select>
-                {selectedProject && <div className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-600"><span className="font-semibold text-gray-900">Selected:</span> {selectedProject.name}</div>}
-                <button
-                  type="button"
-                  onClick={() => void openProjectOverview()}
-                  disabled={!selectedProjectId || projectLoading}
-                  className="mt-4 w-full rounded-lg bg-blue-700 px-5 py-3 font-semibold text-white disabled:opacity-40"
-                >
-                  {projectLoading
-                    ? "Loading…"
-                    : "Open Project Overview →"}
-                </button>
-                {engineeringTask === "pump_sizing" && (
-                  <p className="mt-3 text-xs leading-5 text-blue-800">
-                    The saved fluid, flow, pipes, fittings, equipment and elevations will be reused.
-                    You only need to add the pump boundary conditions and calculate the required duty.
-                  </p>
-                )}
-              </div>
-            </div>
+            <ProjectSelection projects={projects} name={newProjectName} description={newProjectDescription}
+              selectedId={selectedProjectId} busy={projectLoading} onName={setNewProjectName} onDescription={setNewProjectDescription}
+              onSelect={value => { setSelectedProjectId(value); setProjectStatus(""); }}
+              onCreate={() => void createProject()} onOpen={() => void openProjectOverview()} openLabel="Open Project Overview">
+              {engineeringTask === "pump_sizing" && <p className="mt-3 text-xs leading-5 text-blue-800">The saved fluid, flow, pipes, fittings, equipment and elevations will be reused. You only need to add the pump boundary conditions and calculate the required duty.</p>}
+            </ProjectSelection>
             {selectedProjectId && <div className="mt-5 flex justify-end"><button type="button" onClick={() => void deleteProject()} disabled={projectLoading} className="text-sm font-medium text-red-700 hover:underline">Delete selected project</button></div>}
             {projectStatus && <p className="mt-4 text-sm text-gray-600">{projectStatus}</p>}
           </section>
@@ -7415,6 +7254,7 @@ export default function Home() {
           </section>
         )}
 
+        </div>
       </div>
 
     </main>

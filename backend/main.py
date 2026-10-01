@@ -49,6 +49,7 @@ from reports.project_engineering_report import (
 from database.db import create_db_and_tables
 
 from backend.auth import get_current_user_id
+from backend.control_valves import router as control_valves_router
 from backend.projects import router as projects_router
 from backend.scenarios import router as scenarios_router
 from backend.project_delete import router as project_delete_router
@@ -66,6 +67,7 @@ app = FastAPI(
     ),
 )
 
+app.include_router(control_valves_router)
 app.include_router(projects_router)
 app.include_router(scenarios_router)
 app.include_router(project_delete_router)

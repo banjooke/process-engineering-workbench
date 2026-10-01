@@ -332,6 +332,7 @@ def _public_item(item: dict[str, Any]) -> dict[str, Any]:
         "category": item.get("category"),
         "aliases": item.get("aliases", []),
         "cas": item.get("cas"),
+        "liquid_capability": get_liquid_capability(str(item["id"])),
     }
 
 
@@ -611,6 +612,7 @@ def search_fluids(query: str, limit: int = 30) -> list[dict[str, Any]]:
                     "category": category,
                     "aliases": aliases,
                     "cas": cas,
+                    "liquid_capability": get_liquid_capability(public_id),
                 },
             ))
 
@@ -889,6 +891,29 @@ def _get_properties_thermo(
 def _resolve_catalogue_item(fluid: str) -> dict[str, Any] | None:
     q = _normalise_search_text(fluid)
     return _catalogue_index().get(q)
+
+
+def get_liquid_capability(fluid: str) -> dict[str, Any]:
+    """Identity eligibility, not phase prediction or a second catalogue.
+
+    Pure molecular provider models represent Newtonian liquids. Their actual
+    single-phase applicability must still be checked at the requested P/T.
+    Never infer purity from a display name, category, or a trial pressure.
+    """
+    item = _resolve_catalogue_item(fluid)
+    cp_id = item.get("coolprop") if item else fluid
+    pure = None
+    if COOLPROP_AVAILABLE and cp_id:
+        try:
+            pure = CP.get_fluid_param_string(str(cp_id), "pure").lower() == "true"
+        except Exception:
+            pass
+    identity = _try_chemical_identity(str(item.get("thermo") or fluid) if item else fluid)
+    if pure is False:
+        return {"eligible": False, "reason": "Mixtures and pseudo-pure blends are unsupported."}
+    if pure is not True and not (THERMO_AVAILABLE and identity and identity.get("cas") and identity.get("formula")):
+        return {"eligible": False, "reason": "No supported pure molecular fluid model; mixtures, slurries and unconfirmed fluids are unsupported."}
+    return {"eligible": True, "reason": "Pure-fluid Newtonian model; single-phase liquid must be confirmed at the actual upstream pressure and temperature."}
 
 
 def _properties_are_usable(properties: dict[str, Any]) -> bool:
