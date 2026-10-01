@@ -277,6 +277,17 @@ test('sign-out returns to login without touching the saved workspace, and login 
   assert.deepEqual(calls, ['signed out', '/login', '/?workspace=home']);
 });
 
+test('cancelling the unsaved-change sign-out guard preserves the authenticated workspace', async () => {
+  let stateIndex = 0;
+  const Account = load('../components/UserAccount.tsx', {
+    react: { useEffect() {}, useState: () => [['engineer@example.test', false, false][stateIndex++], () => assert.fail('guard must run before state changes')] },
+    'react/jsx-runtime': jsx,
+    'next/navigation': { useRouter: () => ({ replace: () => assert.fail('navigation'), refresh: () => assert.fail('refresh') }) },
+    '@/lib/supabase/client': { createClient: () => assert.fail('cancelled sign-out must not access authentication') },
+  }).default;
+  await nodes(Account({ beforeSignOut: () => false })).find(node => node.type === 'button').props.onClick();
+});
+
 for (const [next, expected] of [
   [undefined, '/?workspace=home'], ['', '/?workspace=home'], ['/', '/?workspace=home'],
   ['https://workbench.test/', '/?workspace=home'],
