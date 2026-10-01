@@ -50,11 +50,18 @@ export function restoreValveSession(scenario: ScenarioRecord): ValveSession {
   if (!isValveScenario(scenario)) throw new Error("This scenario belongs to another engineering task.");
   const saved = scenario.fluid_config.control_valve;
   if (!record(saved) || !isDraft(saved.draft)) throw new Error("Saved valve inputs are incomplete or unsupported. The saved scenario has not been overwritten.");
-  const draft = saved.draft;
+  // Legacy mode fields are UI metadata, never engineering-engine arguments.
+  const draft = { ...saved.draft } as Draft & Record<string, unknown>;
+  const modes = [saved.sizing_mode, saved.sizingMode, draft.sizing_mode, draft.sizingMode,
+    scenario.fluid_config.sizing_mode, scenario.fluid_config.sizingMode].filter(value => value !== undefined);
+  delete draft.sizing_mode;
+  delete draft.sizingMode;
+  const direct = modes.every(value => ["direct", "direct_pressure", "direct_pressures"].includes(String(value)));
+
   const compatible = saved.schema_version === SCENARIO_VERSION && saved.calculation_version === CALCULATION_VERSION;
-  const current = compatible && saved.calculated_inputs === inputSignature(draft) && typeof saved.calculated_at === "string" && Number.isFinite(Date.parse(saved.calculated_at)) && !Object.keys(validateDraft(draft)).length && completeValveResult(saved.result, draft);
+  const current = compatible && direct && saved.calculated_inputs === inputSignature(saved.draft) && typeof saved.calculated_at === "string" && Number.isFinite(Date.parse(saved.calculated_at)) && !Object.keys(validateDraft(draft)).length && completeValveResult(saved.result, draft);
   return { draft, result: current ? saved.result as ValveResult : null, calculatedAt: current ? saved.calculated_at as string : null,
-    calculatedInputs: current ? saved.calculated_inputs as string : null,
+    calculatedInputs: current ? inputSignature(draft) : null,
     staleReason: current ? null : compatible ? "Saved result is missing, incomplete or out of date. Recalculate." : "Saved schema or calculation version differs. Recalculate before using results." };
 }
 export function valveScenarioPayload(name: string, description: string, session: ValveSession): ScenarioPayload {
@@ -66,7 +73,7 @@ export function valveScenarioPayload(name: string, description: string, session:
     flow_value: Number.isFinite(flow) && flow > 0 ? flow : 0, flow_unit: session.draft.cases.normal.flowUnit,
     inlet_pressure_bar_a: null, property_reference_pressure_bar_a: null, elements: [],
     fluid_config: { engineering_task: VALVE_TASK, fluid: session.draft.fluid, use_manual_properties: false, phase_type: "Liquid",
-      control_valve: { schema_version: SCENARIO_VERSION, calculation_version: CALCULATION_VERSION, draft: session.draft,
+      control_valve: { sizing_mode: "direct_pressure", schema_version: SCENARIO_VERSION, calculation_version: CALCULATION_VERSION, draft: session.draft,
         request: valid ? buildValveRequest(session.draft) : null, result: ready ? session.result : null,
         calculated_inputs: ready ? session.calculatedInputs : null, calculated_at: ready ? session.calculatedAt : null,
         result_status: ready ? "current" : "recalculate" } } };

@@ -11,6 +11,10 @@ import {
   useState,
 } from "react";
 
+import IndustrySelector from "@/components/IndustrySelector";
+import ModuleWorkspace from "@/components/ModuleWorkspace";
+import { INDUSTRIES, type ModuleAction } from "@/lib/module-registry";
+import { useIndustryWorkspace } from "@/lib/use-industry-workspace";
 import ControlValveProjectWorkflow from "@/components/ControlValveProjectWorkflow";
 import ProjectSelection from "@/components/ProjectSelection";
 import { listProjects, createProjectRecord, listScenarioRecords, isValveScenario, confirmScenarioDeletion, type ProjectSummary, type ScenarioRecord } from "@/lib/projects";
@@ -594,6 +598,7 @@ const inputClass =
 // ============================================================
 
 export default function Home() {
+  const workspace = useIndustryWorkspace();
   const valveExitGuard = useRef<() => boolean>(() => true);
   const registerValveExitGuard = useCallback((guard: () => boolean) => { valveExitGuard.current = guard; }, []);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -4700,6 +4705,20 @@ export default function Home() {
     }
   }
 
+  function launchModule(action: ModuleAction) {
+    const currentAction = wizardStep === "control_valve" ? "control_valve" : wizardStep === "tasks" ? null : engineeringTask;
+    if (currentAction === action) { workspace.enterModule(); return; }
+    if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
+    if (action === "control_valve") {
+      setEngineeringTask(null); setWizardStep("control_valve");
+    } else {
+      setEngineeringTask(action); setWizardStep("project"); setAnalysisType(null);
+      if (action === "pump_sizing") setPumpResult(null);
+    }
+    workspace.enterModule();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   // ========================================================
   // PAGE
   // ========================================================
@@ -4710,7 +4729,7 @@ export default function Home() {
 
       <header className="border-b bg-white">
 
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-6">
+        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-6 py-6 sm:flex-row sm:items-center">
 
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
@@ -4718,26 +4737,20 @@ export default function Home() {
             </h1>
 
             <p className="mt-1 text-gray-500">
-              Fluid Flow & Hydraulics
+              {INDUSTRIES.find(industry => industry.id === workspace.industry)?.title ?? "Engineering tools for your industry"}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
   <button
     type="button"
-    onClick={() => {
-      if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
-      setActivePage("assistant");
-      setWizardStep("tasks");
-      setEngineeringTask(null);
-      setAnalysisType(null);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }}
+    onClick={() => workspace.showModules()}
     className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
-    title="Return to the Workbench home"
+    title="Return to engineering modules"
   >
-    Home
+    Modules
   </button>
+  <button type="button" onClick={() => workspace.goHome(() => wizardStep !== "control_valve" || valveExitGuard.current())} className="rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Home</button>
 
   <UserAccount beforeSignOut={() => wizardStep !== "control_valve" || valveExitGuard.current()} />
 </div>
@@ -4748,130 +4761,10 @@ export default function Home() {
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         <EngineeringServiceStatus onRetryLoads={() => setLoadAttempt((attempt) => attempt + 1)} />
-
-        {wizardStep !== "overview" && wizardStep !== "tasks" && wizardStep !== "control_valve" && (
-        <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">
-          {[
-            ["project", "1", "Project"],
-            ["analysis", "2", "Analysis"],
-            ["method", "3", "Method"],
-            ["engineering", "4", "Define & Calculate"],
-          ].map(([key, number, label]) => {
-            const order = ["project", "analysis", "method", "engineering"];
-            const current = order.indexOf(wizardStep);
-            const item = order.indexOf(key);
-            const active = key === wizardStep;
-            const complete = item < current;
-            return (
-              <div key={key} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${active ? "border-teal-700 bg-teal-700 text-white" : complete ? "border-teal-200 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-400"}`}>
-                <span className="font-bold">{complete ? "✓" : number}</span>
-                <span className="font-medium">{label}</span>
-              </div>
-            );
-          })}
-        </div>
-        )}
-
-        {wizardStep === "control_valve" && (
-          <ControlValveProjectWorkflow registerExitGuard={registerValveExitGuard} onExit={() => setWizardStep("tasks")} apiBaseUrl={API_BASE_URL} fluids={availableFluids}
-            catalogueError={fluidCatalogueError} catalogueLoading={databaseLoading}
-            onRetryFluids={() => setLoadAttempt((attempt) => attempt + 1)} />
-        )}
-
-        {wizardStep === "tasks" && (
-          <section className="mx-auto max-w-6xl">
-            <div className="mb-7 text-center">
-              <div className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">
-                Hydraulics Workbench
-              </div>
-              <h2 className="mt-2 text-3xl font-bold text-gray-900">
-                What engineering task do you want to perform?
-              </h2>
-              <p className="mx-auto mt-3 max-w-3xl text-gray-600">
-                Start a new hydraulic analysis or reopen an existing project.
-                Engineering tasks share the same validated fluid, piping, fitting and calculation infrastructure.
-              </p>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-3">
-              <button type="button" onClick={() => { setEngineeringTask(null); setWizardStep("control_valve"); }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">
-                <span className="rounded-full border border-teal-700 px-3 py-1 text-xs font-bold uppercase text-teal-800">Prototype</span>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">Control Valve Sizing</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">Estimate preliminary liquid Cv and Kv using direct valve pressures. Manufacturer confirmation required.</p>
-                <div className="mt-5 text-sm font-semibold">Open task →</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("pressure_drop");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">Pressure Drop / Line Analysis</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Calculate line losses, pressure profile, velocities, Reynolds number and engineering checks.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("system_curve");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">System Curve Generator</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Define or load a liquid hydraulic system and generate system head versus flow.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEngineeringTask("pump_sizing");
-                  setWizardStep("project");
-                  setAnalysisType(null);
-                  setPumpResult(null);
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
-                className="group rounded-2xl border border-black bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:bg-gray-50 hover:shadow-md"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="rounded-full border border-black bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-black">
-                    Available
-                  </div>
-                  <span className="text-xl text-black transition group-hover:translate-x-1">→</span>
-                </div>
-                <h3 className="mt-5 text-xl font-bold text-gray-900">Pump Sizing</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-600">
-                  Determine the required liquid pump duty, differential head and preliminary power requirement from the hydraulic system.
-                </p>
-                <div className="mt-5 text-sm font-semibold text-black">Open task →</div>
-              </button>
-            </div>
-
+        {workspace.view === "industries" && <IndustrySelector selected={workspace.industry} onSelect={workspace.chooseIndustry} />}
+        {workspace.view === "modules" && workspace.industry && (
+          <ModuleWorkspace industry={workspace.industry} onLaunch={launchModule}
+            onResume={wizardStep !== "tasks" ? workspace.enterModule : undefined}>
             <div className="mt-7 rounded-2xl border border-black bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -4882,6 +4775,8 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
+                    if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
+                    workspace.enterModule();
                     setEngineeringTask("pressure_drop");
                     setWizardStep("project");
                     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4910,7 +4805,9 @@ export default function Home() {
                         key={project.id}
                         type="button"
                         onClick={() => {
+                          if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
                           setSelectedProjectId(String(project.id));
+                          workspace.enterModule();
                           setEngineeringTask("pressure_drop");
                           setWizardStep("overview");
                           setAnalysisType("scenario");
@@ -4934,7 +4831,38 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </section>
+          </ModuleWorkspace>
+        )}
+        {/* Keep active project/scenario components mounted while browsing industries. */}
+        <div hidden={workspace.view !== "module"}>
+
+        {wizardStep !== "overview" && wizardStep !== "tasks" && wizardStep !== "control_valve" && (
+        <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">
+          {[
+            ["project", "1", "Project"],
+            ["analysis", "2", "Analysis"],
+            ["method", "3", "Method"],
+            ["engineering", "4", "Define & Calculate"],
+          ].map(([key, number, label]) => {
+            const order = ["project", "analysis", "method", "engineering"];
+            const current = order.indexOf(wizardStep);
+            const item = order.indexOf(key);
+            const active = key === wizardStep;
+            const complete = item < current;
+            return (
+              <div key={key} className={`flex items-center gap-2 rounded-full border px-4 py-2 ${active ? "border-teal-700 bg-teal-700 text-white" : complete ? "border-teal-200 bg-teal-50 text-teal-800" : "border-gray-200 bg-white text-gray-400"}`}>
+                <span className="font-bold">{complete ? "✓" : number}</span>
+                <span className="font-medium">{label}</span>
+              </div>
+            );
+          })}
+        </div>
+        )}
+
+        {wizardStep === "control_valve" && (
+          <ControlValveProjectWorkflow registerExitGuard={registerValveExitGuard} onExit={() => workspace.showModules()} apiBaseUrl={API_BASE_URL} fluids={availableFluids}
+            catalogueError={fluidCatalogueError} catalogueLoading={databaseLoading}
+            onRetryFluids={() => setLoadAttempt((attempt) => attempt + 1)} />
         )}
 
         {wizardStep === "project" && (
@@ -7326,6 +7254,7 @@ export default function Home() {
           </section>
         )}
 
+        </div>
       </div>
 
     </main>

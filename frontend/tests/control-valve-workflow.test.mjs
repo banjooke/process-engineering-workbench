@@ -75,7 +75,7 @@ test('draft creation never invents operating flow or pressure and other tasks ca
   assert.throws(() => persistence.restoreValveSession({ fluid_config: { engineering_task: 'pump_sizing' } }), /another engineering task/);
 });
 
-function mount({ rows = [], intercept, confirm = true } = {}) {
+function mount({ rows = [], intercept, confirm = true, onExit } = {}) {
   const calls = [], projectRows = [{ id: 1, name: 'Existing project', description: null }], scenarios = rows.map(plain);
   let next = 10, stateIndex = 0, refIndex = 0, effectIndex = 0;
   const state = [], refs = [], deps = [], cleanups = [], listeners = new Map();
@@ -108,7 +108,7 @@ function mount({ rows = [], intercept, confirm = true } = {}) {
     '@/components/ProjectSelection': selector, '@/components/ControlValveSizing': { default: SizingStub },
     '@/lib/control-valve': valve, '@/lib/projects': api, '@/lib/control-valve-persistence': persistence }, window);
   const exitGuard = { current: () => true };
-  const render = () => { stateIndex = refIndex = effectIndex = 0; return component.default({ apiBaseUrl: 'https://api.test', fluids: [], onRetryFluids() {}, registerExitGuard: guard => { exitGuard.current = guard; } }); };
+  const render = () => { stateIndex = refIndex = effectIndex = 0; return component.default({ apiBaseUrl: 'https://api.test', fluids: [], onRetryFluids() {}, onExit, registerExitGuard: guard => { exitGuard.current = guard; } }); };
   function nodes(node) { if (Array.isArray(node)) return node.flatMap(nodes); if (!React.isValidElement(node)) return []; return [node, ...nodes(typeof node.type === 'function' ? node.type(node.props) : node.props.children)]; }
   const all = () => nodes(render());
   const text = node => typeof node === 'string' ? node : Array.isArray(node) ? node.map(text).join('') : React.isValidElement(node) ? text(node.props.children) : '';
@@ -215,4 +215,37 @@ test('confirmed deletion refreshes scenario list', async () => {
   const h = mount({ rows: [savedScenario()] }); await h.openScenario(); await h.click('Delete scenario');
   assert.equal(h.calls.filter(c => c.method === 'DELETE').length, 1);
   assert.doesNotMatch(h.html(), /Sizing form/); assert.match(h.html(), /No saved control-valve scenarios/); h.unmount();
+});
+
+
+test('legacy direct-pressure mode fields normalize without losing inputs or current results', () => {
+  const saved = savedScenario();
+  saved.fluid_config.control_valve.draft.sizing_mode = 'direct_pressure';
+  saved.fluid_config.control_valve.sizingMode = 'direct';
+  saved.fluid_config.control_valve.calculated_inputs = persistence.inputSignature(saved.fluid_config.control_valve.draft);
+  const restored = persistence.restoreValveSession(saved);
+  assert.deepEqual(plain(restored.draft), plain(draft())); assert.ok(restored.result);
+  assert.equal(restored.calculatedInputs, persistence.inputSignature(restored.draft));
+  const resaved = persistence.valveScenarioPayload('Valve A', '', restored);
+  assert.equal(resaved.fluid_config.control_valve.sizing_mode, 'direct_pressure');
+  assert.ok(resaved.fluid_config.control_valve.result);
+  assert.equal(resaved.fluid_config.control_valve.request.normal.upstream_pressure, 3.54);
+  assert.equal(saved.fluid_config.control_valve.draft.sizing_mode, 'direct_pressure');
+});
+
+test('obsolete piping mode retains inputs but cannot restore a current result', () => {
+  const saved = savedScenario(); saved.fluid_config.control_valve.sizing_mode = 'piping_system';
+  const restored = persistence.restoreValveSession(saved);
+  assert.deepEqual(plain(restored.draft), plain(draft())); assert.equal(restored.result, null);
+  assert.match(restored.staleReason, /Recalculate/);
+});
+
+
+test('returning to module workspace preserves dirty valve inputs and exit guard', async () => {
+  let returned = false;
+  const h = mount({ rows: [savedScenario()], confirm: false, onExit: () => { returned = true; } });
+  await h.openScenario(); const changed = draft(); changed.cases.normal.flow = '12'; h.sizing().onEdit(changed);
+  await h.click('Back to modules'); assert.equal(returned, true);
+  assert.match(h.html(), /Unsaved changes/); assert.equal(h.sizing().initialValues.cases.normal.flow, '12');
+  assert.equal(h.exitGuard.current(), false); h.unmount();
 });

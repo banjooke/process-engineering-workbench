@@ -127,7 +127,7 @@ export default function ControlValveProjectWorkflow(props: Props) {
     <h2 className="text-3xl font-bold">Control Valve Sizing</h2>
     <ol aria-label="Sizing steps" className="flex flex-wrap gap-3 text-sm">{["Project", "Scenario", "Sizing inputs", "Results"].map((label, i) => <li key={label} aria-current={i === currentStep ? "step" : undefined} className={i === currentStep ? "font-bold text-teal-800" : "text-gray-500"}>Step {i + 1}: {label}</li>)}</ol>
     <div className="flex flex-wrap gap-3 text-sm">
-      {props.onExit && <button type="button" className={button} disabled={locked} onClick={() => leave(() => props.onExit?.())}>Back to tasks</button>}
+      {props.onExit && <button type="button" className={button} disabled={locked} onClick={() => props.onExit?.()}>Back to modules</button>}
       {project && <><span>Project: <strong>{project.name}</strong></span><button type="button" className={button} disabled={locked} onClick={() => leave(() => { setProject(null); clearScenario(); })}>Change project</button></>}
       {scenario && <><span>Scenario: <strong>{name}</strong></span><button type="button" className={button} disabled={locked} onClick={() => leave(clearScenario)}>Change scenario</button><span role="status">{dirty ? "Unsaved changes" : "Saved"}</span></>}
     </div>
@@ -169,7 +169,7 @@ export default function ControlValveProjectWorkflow(props: Props) {
           }} onEdit={draft => { setSession(editValveSession(session, draft)); setDirty(true); }}
           onCalculated={(draft, result) => { setSession(calculatedValveSession(draft, result)); setDirty(true); setStep("results"); }} />
       </fieldset>
-      <p className="text-sm text-gray-600">Reports and system-aware Crane integration are deferred. Saved preliminary results do not permit final valve selection.</p>
+      <p className="text-sm text-gray-600">Reports and system-aware piping integration may be added later. Saved preliminary results do not permit final valve selection.</p>
     </>}
   </section>;
 }

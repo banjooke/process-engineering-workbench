@@ -136,7 +136,7 @@ export default function ControlValveSizing({ apiBaseUrl, fluids, catalogueError,
     <form hidden={view === "results"} onSubmit={submit} noValidate className="space-y-5">
       <fieldset disabled={pending} className="min-w-0 space-y-5 disabled:opacity-70">
         <legend className="sr-only">Valve sizing inputs</legend>
-        <div className="grid gap-4 rounded-2xl border border-gray-300 bg-white p-5 sm:grid-cols-2"><div><h3 className="font-bold">Service</h3><p>Liquid — single-phase, pure Newtonian fluid</p></div><div><h3 className="font-bold">Sizing mode</h3><p>Direct valve pressures — selected</p><p className="mt-1 text-sm text-gray-500">Calculate from piping system — Coming later</p></div></div>
+        <div className="rounded-2xl border border-gray-300 bg-white p-5"><h3 className="font-bold">Liquid service</h3><p>Single-phase, pure Newtonian fluid. Enter the upstream and downstream pressures directly across the valve.</p></div>
         <div className="rounded-2xl border border-gray-300 bg-white p-5">
           <label htmlFor="valve-fluid-search" className="font-bold">Search workbench substances</label>
           <input id="valve-fluid-search" className={inputClass} value={query} placeholder="Search by name, formula, refrigerant code or CAS number" onChange={e => {

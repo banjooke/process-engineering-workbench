@@ -83,7 +83,8 @@ function mount(fetcher = async () => new Response(JSON.stringify(result())), pro
 
 test('task selector integrates the dedicated project-first workflow', () => {
   const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
-  assert.match(source, /Control Valve Sizing/);
+  assert.match(source, /<ModuleWorkspace/);
+  assert.match(readFileSync(new URL('../lib/module-registry.ts', import.meta.url), 'utf8'), /Control Valve Sizing/);
   assert.match(source, /setWizardStep\("control_valve"\)/);
   assert.match(source, /<ControlValveProjectWorkflow[^\n]*apiBaseUrl=\{API_BASE_URL\} fluids=\{availableFluids\}/);
   assert.doesNotMatch(source, /control-valves\/liquid\/size/);
@@ -93,8 +94,8 @@ test('normal default, mandatory warnings, no unsupported interactive controls', 
   const html = mount().html();
   assert.match(html, /Normal operating case/);
   assert.doesNotMatch(html, /Minimum operating case|Maximum operating case/);
-  assert.match(html, /Direct valve pressures — selected/);
-  assert.match(html, /Coming later/);
+  assert.match(html, /upstream and downstream pressures directly across the valve/);
+  assert.doesNotMatch(html, /Sizing mode|Calculate from piping system|Coming later|Direct valve pressures.*selected/);
   assert.match(html, /Not verified against the complete IEC\/ISA/);
   assert.match(html, /Confirm final sizing and valve selection/);
   assert.doesNotMatch(html, />Gas<|>Steam<|Download|Save project|name="FL"/);
