@@ -148,3 +148,15 @@ test('authenticated root refresh is not redirected or given a fresh-login signal
   const response = await loadProxy(true)(new nextServer.NextRequest('https://workbench.test/'));
   assert.equal(response.headers.get('location'), null);
 });
+
+test('unauthorized entry followed by a fresh authenticated login preserves the Home signal', async () => {
+  const unauthorized = await loadProxy(false)(new nextServer.NextRequest('https://workbench.test/'));
+  const loginUrl = unauthorized.headers.get('location');
+  assert.equal(loginUrl, 'https://workbench.test/login?next=%2F');
+  // The proxy can observe the new session before the password form navigates.
+  const authenticated = await loadProxy(true)(new nextServer.NextRequest(loginUrl));
+  const homeUrl = authenticated.headers.get('location');
+  assert.equal(homeUrl, 'https://workbench.test/?workspace=home');
+  const home = await loadProxy(true)(new nextServer.NextRequest(homeUrl));
+  assert.equal(home.headers.get('location'), null, 'Home signal reaches the workspace unchanged');
+});

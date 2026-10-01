@@ -1,3 +1,4 @@
+import { authenticationDestination } from "@/lib/auth-destination";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -62,9 +63,12 @@ export async function updateSession(request: NextRequest) {
     isAuthenticated &&
     (pathname === "/login" || pathname === "/signup")
   ) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
-    homeUrl.search = "";
+    // Session establishment can reach this redirect before the login page navigates.
+    // Use the same one-time Home signal and destination validation as the form/callback.
+    const homeUrl = new URL(
+      authenticationDestination(request.nextUrl.searchParams.get("next"), request.nextUrl.origin),
+      request.nextUrl.origin
+    );
 
     return NextResponse.redirect(homeUrl);
   }
