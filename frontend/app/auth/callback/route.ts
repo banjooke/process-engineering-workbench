@@ -43,5 +43,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(safeDestination(next, requestUrl.origin));
+  const destination = safeDestination(next, requestUrl.origin);
+  if (destination.pathname === "/") destination.searchParams.set("workspace", "home");
+  return NextResponse.redirect(destination);
 }

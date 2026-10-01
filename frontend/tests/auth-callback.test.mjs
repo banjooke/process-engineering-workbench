@@ -48,7 +48,7 @@ for (const next of [
 ]) {
   test(`unsafe or empty next falls back: ${JSON.stringify(next)}`, async () => {
     const result = await redirect(next);
-    assert.equal(result.location, 'https://workbench.test/');
+    assert.equal(result.location, 'https://workbench.test/?workspace=home');
     assert.deepEqual(result.calls, []);
   });
 }
@@ -70,11 +70,45 @@ test('successful exchange preserves destination and exchanges exactly once', asy
 });
 test('successful exchange cannot redirect externally', async () => {
   const result = await redirect('https://external.test', { code: 'test-code' });
-  assert.equal(result.location, 'https://workbench.test/');
+  assert.equal(result.location, 'https://workbench.test/?workspace=home');
   assert.deepEqual(result.calls, ['test-code']);
 });
 test('failed exchange retains local error destination', async () => {
   const result = await redirect('https://external.test', { code: 'bad-code', error: {} });
   assert.equal(result.location, 'https://workbench.test/login?error=recovery-link-invalid');
   assert.deepEqual(result.calls, ['bad-code']);
+});
+
+test('successful default callback selects Home', async () => {
+  const result = await redirect(undefined, { code: 'signup-or-passwordless-code' });
+  assert.equal(result.location, 'https://workbench.test/?workspace=home');
+  assert.deepEqual(result.calls, ['signup-or-passwordless-code']);
+});
+
+test('root callback replaces conflicting workspace values and preserves unrelated URL state', async () => {
+  const result = await redirect('/?workspace=general&workspace=other&keep=1#saved', { code: 'test-code' });
+  assert.equal(result.location, 'https://workbench.test/?workspace=home&keep=1#saved');
+});
+
+test('Home signal does not bypass authentication for direct access', async () => {
+  const exports = {};
+  const source = readFileSync(new URL('../lib/supabase/proxy.ts', import.meta.url), 'utf8');
+  const compiled = ts.transpileModule(source, {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  vm.runInNewContext(compiled, {
+    exports, process: { env: {} },
+    require(name) {
+      if (name === 'next/server') return nextServer;
+      if (name === '@supabase/ssr') return {
+        createServerClient: () => ({ auth: { getClaims: async () => ({ data: null }) } }),
+      };
+      throw new Error(`Unexpected import: ${name}`);
+    },
+  });
+  const response = await exports.updateSession(new nextServer.NextRequest('https://workbench.test/?workspace=home'));
+  const destination = new URL(response.headers.get('location'));
+  assert.equal(destination.origin, 'https://workbench.test');
+  assert.equal(destination.pathname, '/login');
+  assert.equal(destination.searchParams.get('next'), '/');
 });

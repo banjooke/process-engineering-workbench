@@ -1,10 +1,24 @@
 "use client";
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { industryPreference } from "@/lib/industry-preference";
 import { isSelectableIndustry, type IndustryId } from "@/lib/module-registry";
 export function useIndustryWorkspace() {
   const industry = useSyncExternalStore(industryPreference.subscribe, industryPreference.getSnapshot, industryPreference.getServerSnapshot);
-  const [view, setView] = useState<"industries" | "modules" | "module" | null>(null);
+  // Fresh authentication overrides restoration without deleting the saved preference.
+  // Only this exact internal value is accepted; it is never a redirect destination.
+  const [view, setView] = useState<"industries" | "modules" | "module" | null>(() =>
+    typeof window !== "undefined" && new URL(window.location.href).searchParams.get("workspace") === "home"
+      ? "industries"
+      : null
+  );
+  useEffect(() => {
+    if (view !== "industries") return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("workspace") !== "home") return;
+    url.searchParams.delete("workspace");
+    // Preserve Next.js history state and unrelated query/hash values.
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [view]);
   return {
     industry, view: view ?? (industry ? "modules" : "industries"),
     chooseIndustry(value: IndustryId) { if (!isSelectableIndustry(value)) return; industryPreference.select(value); setView("modules"); },
