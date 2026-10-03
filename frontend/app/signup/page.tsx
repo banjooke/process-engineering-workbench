@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { authenticationDestination } from "@/lib/auth-destination";
+import { industryPreference } from "@/lib/industry-preference";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +39,7 @@ export default function SignUpPage() {
     }
 
     if (data.session) {
+      industryPreference.clear();
       const loginUrl = new URL(window.location.href);
       router.push(authenticationDestination(loginUrl.searchParams.get("next"), loginUrl.origin));
       router.refresh();

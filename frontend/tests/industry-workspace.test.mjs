@@ -13,7 +13,7 @@ vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/auth-destinat
 }).outputText, { exports: authDestination, URL });
 
 function load(path, imports = {}, globals = {}) {
-  imports = { '@/lib/auth-destination': authDestination, ...imports };
+  imports = { '@/lib/auth-destination': authDestination, '@/lib/industry-preference': { industryPreference: { clear() {} } }, ...imports };
   globals = { URL, ...(path.includes('/login/') || path.includes('/signup/') ? { window: { location: { href: 'https://workbench.test/login' } } } : {}), ...globals };
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;
@@ -26,7 +26,65 @@ const Selector = load('../components/IndustrySelector.tsx', { '@/lib/module-regi
 const Workspace = load('../components/ModuleWorkspace.tsx', { '@/lib/module-registry': registry, 'react/jsx-runtime': jsx }).default;
 const plain = value => JSON.parse(JSON.stringify(value));
 function nodes(node) { if (Array.isArray(node)) return node.flatMap(nodes); return React.isValidElement(node) ? [node, ...nodes(node.props.children)] : []; }
-function storage(initial) { let value = initial; return { getItem(key) { assert.equal(key, preference.INDUSTRY_STORAGE_KEY); return value; }, setItem(key, next) { assert.equal(key, preference.INDUSTRY_STORAGE_KEY); value = next; } }; }
+function storage(initial) { let value = initial; return { getItem(key) { assert.equal(key, preference.INDUSTRY_STORAGE_KEY); return value; }, setItem(key, next) { assert.equal(key, preference.INDUSTRY_STORAGE_KEY); value = next; }, removeItem(key) { assert.equal(key, preference.INDUSTRY_STORAGE_KEY); value = null; } }; }
+
+test('actual login/signup/sign-out handlers repeatedly reset only workspace storage before navigation', async () => {
+  const data = new Map([['projects', '[{"id":1}]'], ['scenarios', '[{"id":2}]'], ['form', 'draft'], ['results', 'saved'], ['unrelated', 'keep']]);
+  const original = [...data];
+  const sessionStorage = new Map([['unrelated-session', 'keep']]);
+  const local = { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) };
+  const store = preference.createIndustryPreference(() => local);
+  const imports = {
+    '@/lib/industry-preference': { industryPreference: store },
+    react: { useEffect() {}, useState: initial => [initial === true ? false : initial, () => {}] },
+    'react/jsx-runtime': jsx, 'next/link': { default: 'a' },
+    'next/navigation': { useRouter: () => ({
+      push(path) { assert.equal(path, '/?workspace=home'); assert.equal(store.getSnapshot(), null); assert.equal(local.getItem(preference.INDUSTRY_STORAGE_KEY), null); },
+      replace(path) { assert.equal(path, '/login'); assert.equal(store.getSnapshot(), null); }, refresh() {},
+    }) },
+    '@/lib/supabase/client': { createClient: () => ({ auth: {
+      signInWithPassword: async () => ({ error: null }), signUp: async () => ({ error: null, data: { session: {} } }), signOut: async () => ({ error: null }),
+    } }) },
+  };
+  for (const page of ['signup', 'login', 'login', 'login']) {
+    store.select('general'); // Include a stale preference at the authentication boundary.
+    const Page = load(`../app/${page}/page.tsx`, imports).default;
+    await nodes(Page()).find(node => node.type === 'form').props.onSubmit({ preventDefault() {} });
+    assert.equal(store.getSnapshot(), null, 'fresh session displays Home');
+    store.select('general');
+    assert.equal(store.getSnapshot(), 'general');
+    assert.ok(nodes(Workspace({ industry: store.getSnapshot(), onLaunch() {} })).some(node => node.type === 'button'));
+    const refreshed = preference.createIndustryPreference(() => local);
+    refreshed.subscribe(() => {}); assert.equal(refreshed.getSnapshot(), 'general', 'authenticated refresh restores General');
+    const Account = load('../components/UserAccount.tsx', imports).default;
+    await nodes(Account({ beforeSignOut: () => true })).find(node => node.type === 'button').props.onClick();
+    store.restore(); assert.equal(store.getSnapshot(), null, 'sign-out removes persisted and in-memory selection');
+    assert.deepEqual([...data], original); assert.deepEqual([...sessionStorage], [['unrelated-session', 'keep']]);
+  }
+});
+
+test('clearing with blocked storage resets memory and notifies existing subscribers', () => {
+  const store = preference.createIndustryPreference(() => { throw Error('blocked'); });
+  let changes = 0; store.subscribe(() => changes++); store.select('general'); store.clear();
+  assert.equal(store.getSnapshot(), null); assert.equal(changes, 2);
+});
+
+for (const event of ['SIGNED_OUT', 'INITIAL_SESSION']) test(`authentication loss clears stale workspace: ${event}`, () => {
+  const local = storage('general'), store = preference.createIndustryPreference(() => local);
+  let callback, cleanup, unsubscribed = false;
+  const Account = load('../components/UserAccount.tsx', {
+    '@/lib/industry-preference': { industryPreference: store },
+    react: { useEffect(effect) { cleanup = effect(); }, useState: initial => [initial, () => {}] },
+    'react/jsx-runtime': jsx, 'next/navigation': { useRouter: () => ({}) },
+    '@/lib/supabase/client': { createClient: () => ({ auth: {
+      getUser: async () => ({ data: { user: { email: 'engineer@example.test' } } }),
+      onAuthStateChange(fn) { callback = fn; return { data: { subscription: { unsubscribe() { unsubscribed = true; } } } }; },
+    } }) },
+  }).default;
+  Account({}); callback('TOKEN_REFRESHED', {}); assert.equal(local.getItem(preference.INDUSTRY_STORAGE_KEY), 'general');
+  callback(event, null); assert.equal(local.getItem(preference.INDUSTRY_STORAGE_KEY), null);
+  cleanup(); assert.equal(unsubscribed, true);
+});
 
 test('all seven industries have stable unique identities', () => {
   assert.deepEqual(plain(registry.INDUSTRIES.map(row => row.title)), ['General Process Engineering', 'Pharmaceuticals', 'Food & Beverage', 'Water & Wastewater', 'Oil & Gas', 'Chemicals', 'Energy & Utilities']);
@@ -198,7 +256,7 @@ test('typed module categories render dividers and placeholders stay visible and 
   for (const entry of registry.MODULES) assert.equal(elements.filter(node => node.type === 'h4' && node.props.children === entry.title).length, 1);
 });
 
-test('fresh authentication overrides stored General once, then refresh restores the preference', () => {
+test('fresh authentication clears stored General before consuming Home; subsequent selection restores on refresh', () => {
   const local = storage('general');
   const store = preference.createIndustryPreference(() => local);
   let href = 'https://workbench.test/?workspace=home&keep=1#saved', view, effects = [], writes = 0;
@@ -215,7 +273,7 @@ test('fresh authentication overrides stored General once, then refresh restores 
   assert.equal(hooks.useIndustryWorkspace().view, 'industries');
   effects.forEach(effect => effect()); effects = [];
   assert.equal(writes, 1, 'repeated effects do not consume the signal again');
-  assert.equal(local.getItem(preference.INDUSTRY_STORAGE_KEY), 'general');
+  assert.equal(local.getItem(preference.INDUSTRY_STORAGE_KEY), null);
   hooks.useIndustryWorkspace().chooseIndustry('general');
   assert.equal(hooks.useIndustryWorkspace().view, 'modules', 'consumed signal does not prevent selection');
   view = undefined; assert.equal(hooks.useIndustryWorkspace().view, 'modules');
@@ -258,14 +316,14 @@ test('successful password login emits Home signal, failure does not navigate', a
   }
 });
 
-test('sign-out returns to login without touching the saved workspace, and login returns Home', async () => {
+test('sign-out returns to login and login returns Home', async () => {
   const calls = [];
   const router = { replace: path => calls.push(path), push: path => calls.push(path), refresh() {} };
   let stateIndex = 0;
   const Account = load('../components/UserAccount.tsx', {
     react: { useEffect() {}, useState: () => [['engineer@example.test', false, false][stateIndex++], () => {}] },
     'react/jsx-runtime': jsx, 'next/navigation': { useRouter: () => router },
-    '@/lib/supabase/client': { createClient: () => ({ auth: { signOut: async () => calls.push('signed out') } }) },
+    '@/lib/supabase/client': { createClient: () => ({ auth: { signOut: async () => { calls.push('signed out'); return { error: null }; } } }) },
   }).default;
   await nodes(Account({ beforeSignOut: () => true })).find(node => node.type === 'button').props.onClick();
   const Login = load('../app/login/page.tsx', {

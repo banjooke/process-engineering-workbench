@@ -1,6 +1,6 @@
 import { isSelectableIndustry, type IndustryId } from "@/lib/module-registry";
 export const INDUSTRY_STORAGE_KEY = "workbench.industry.v1";
-type StorageAccess = Pick<Storage, "getItem" | "setItem">;
+type StorageAccess = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 export function readIndustry(storage: StorageAccess): IndustryId | null {
   try { const value = storage.getItem(INDUSTRY_STORAGE_KEY); return isSelectableIndustry(value) ? value : null; } catch { return null; }
 }
@@ -13,6 +13,11 @@ export function createIndustryPreference(getStorage: () => StorageAccess) {
   return {
     getSnapshot: () => selected,
     getServerSnapshot: (): IndustryId | null => null,
+    clear() {
+      selected = null; loaded = true;
+      try { getStorage().removeItem(INDUSTRY_STORAGE_KEY); } catch { /* Reset memory even when browser storage is blocked. */ }
+      notify();
+    },
     restore() { try { selected = readIndustry(getStorage()); } catch { selected = null; } loaded = true; notify(); },
     subscribe(listener: () => void) {
       listeners.add(listener);

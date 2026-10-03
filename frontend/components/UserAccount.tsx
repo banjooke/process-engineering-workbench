@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { industryPreference } from "@/lib/industry-preference";
 
 export default function UserAccount({ beforeSignOut }: { beforeSignOut?: () => boolean }) {
   const router = useRouter();
@@ -12,8 +13,11 @@ export default function UserAccount({ beforeSignOut }: { beforeSignOut?: () => b
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !session)) industryPreference.clear();
+    });
     async function loadUser() {
-      const supabase = createClient();
 
       const {
         data: { user },
@@ -24,6 +28,7 @@ export default function UserAccount({ beforeSignOut }: { beforeSignOut?: () => b
     }
 
     loadUser();
+    return () => subscription.unsubscribe();
   }, []);
 
   async function handleSignOut() {
@@ -31,7 +36,9 @@ export default function UserAccount({ beforeSignOut }: { beforeSignOut?: () => b
     setSigningOut(true);
 
     const supabase = createClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) { setSigningOut(false); return; }
+    industryPreference.clear();
 
     router.replace("/login");
     router.refresh();
