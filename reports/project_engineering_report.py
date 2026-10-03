@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from reports.report_notice import REPORT_DISCLAIMER
+
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -195,6 +197,7 @@ def create_project_pdf_report(payload: dict[str, Any]) -> Path:
 
     story: list[Any] = [
         Paragraph("Process Engineering Workbench", styles["ProjectCenterTitle"]),
+        Paragraph(REPORT_DISCLAIMER, styles["BodyText"]),
         Paragraph("Hydraulic Project & Scenario Engineering Report", styles["Heading2"]),
         Paragraph(f"<b>Project:</b> {_safe_text(project_title)}", styles["BodyText"]),
     ]
@@ -370,6 +373,7 @@ def create_project_docx_report(payload: dict[str, Any]) -> Path:
     p.add_run("Saved scenarios included: ").bold = True
     p.add_run(str(len(scenarios)))
 
+    document.add_paragraph(REPORT_DISCLAIMER)
     document.add_heading("1. Scenario Comparison Summary", level=1)
     _docx_table(document, _summary_rows(scenarios))
     document.add_paragraph(_comparison_note(scenarios))
@@ -561,6 +565,7 @@ def create_pump_project_pdf_report(payload: dict[str, Any]) -> Path:
 
     story: list[Any] = [
         Paragraph("Process Engineering Workbench", styles[f"PumpProjectCenterTitle_{uid}"]),
+        Paragraph(REPORT_DISCLAIMER, styles["BodyText"]),
         Paragraph("Pump Sizing Project & Scenario Engineering Report", styles["Heading2"]),
         Paragraph(f"<b>Project:</b> {_safe_text(project_title)}", styles["BodyText"]),
     ]
@@ -702,6 +707,7 @@ def create_pump_project_docx_report(payload: dict[str, Any]) -> Path:
     p.add_run("Saved scenarios included: ").bold = True
     p.add_run(str(len(scenarios)))
 
+    document.add_paragraph(REPORT_DISCLAIMER)
     document.add_heading("1. Scenario Comparison Summary", level=1)
     _docx_table(document, _pump_summary_rows(scenarios))
     document.add_paragraph(_pump_comparison_note(scenarios))

@@ -39,6 +39,8 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const publicRoutes = [
+    "/privacy",
+    "/terms",
     "/login",
     "/signup",
     "/forgot-password",

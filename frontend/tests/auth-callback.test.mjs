@@ -160,3 +160,11 @@ test('unauthorized entry followed by a fresh authenticated login preserves the H
   const home = await loadProxy(true)(new nextServer.NextRequest(homeUrl));
   assert.equal(home.headers.get('location'), null, 'Home signal reaches the workspace unchanged');
 });
+
+for (const route of ['/privacy', '/terms']) test(`${route} is public while signed out and remains accessible when signed in`, async () => {
+  for (const authenticated of [false, true]) {
+    const response = await loadProxy(authenticated)(new nextServer.NextRequest(`https://workbench.test${route}`));
+    assert.equal(response.headers.get('location'), null);
+    assert.equal(response.status, 200);
+  }
+});

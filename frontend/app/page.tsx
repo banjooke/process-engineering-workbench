@@ -12,6 +12,8 @@ import {
 } from "react";
 
 import IndustrySelector from "@/components/IndustrySelector";
+import BetaBadge from "@/components/BetaBadge";
+import { confidentialityWarning, engineeringDisclaimer, siteConfig } from "@/lib/site-config";
 import ModuleWorkspace from "@/components/ModuleWorkspace";
 import { INDUSTRIES, type ModuleAction } from "@/lib/module-registry";
 import { useIndustryWorkspace } from "@/lib/use-industry-workspace";
@@ -4733,7 +4735,7 @@ export default function Home() {
 
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Process Engineering Workbench
+              {siteConfig.applicationName} <BetaBadge />
             </h1>
 
             <p className="mt-1 text-gray-500">
@@ -4756,12 +4758,19 @@ export default function Home() {
 </div>
         </div>
 
+        <p className="mx-auto max-w-7xl px-6 pb-5 text-sm leading-6 text-gray-700">{engineeringDisclaimer}</p>
       </header>
 
 
       <div className="mx-auto max-w-7xl px-6 py-8">
         <EngineeringServiceStatus onRetryLoads={() => setLoadAttempt((attempt) => attempt + 1)} />
-        {workspace.view === "industries" && <IndustrySelector selected={workspace.industry} onSelect={workspace.chooseIndustry} />}
+        {workspace.view === "industries" && <>
+          <IndustrySelector selected={workspace.industry} onSelect={workspace.chooseIndustry} />
+          <div className="mx-auto mt-6 flex max-w-6xl flex-wrap items-center justify-between gap-4 rounded-xl border border-teal-200 bg-teal-50 p-5 text-sm leading-6 text-teal-900">
+            <p>{confidentialityWarning}</p>
+            <a href={siteConfig.feedbackFormUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 rounded font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-700">Send feedback</a>
+          </div>
+        </>}
         {workspace.view === "modules" && workspace.industry && (
           <ModuleWorkspace industry={workspace.industry} onLaunch={launchModule}
             onResume={wizardStep !== "tasks" ? workspace.enterModule : undefined}>
@@ -6742,6 +6751,7 @@ export default function Home() {
               <div className="mt-6 rounded-xl border border-black bg-white p-5">
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Engineering report</div>
                 <h3 className="mt-1 text-lg font-semibold text-gray-900">Pump Sizing Report</h3>
+                <p className="mt-2 text-sm text-teal-800">Beta output: independently verify before engineering use.</p>
                 <p className="mt-1 text-sm text-gray-600">Download the pump design basis, hydraulic line, head breakdown, pump duty, NPSHa / suction performance, power requirement and generated system curve. Scenario Analysis exports all saved scenarios.</p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <button type="button" onClick={() => void downloadEngineeringReport("pdf", analysisType === "scenario" ? "project" : "current")} disabled={reportLoading !== null} className="rounded-lg bg-black px-5 py-3 font-semibold text-white disabled:opacity-40">
@@ -7040,6 +7050,7 @@ export default function Home() {
                   </div>
                 </div>
 
+                <p className="mt-3 text-sm text-teal-800">Beta output: independently verify before engineering use.</p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <button
                     type="button"
