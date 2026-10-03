@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BetaBadge from "@/components/BetaBadge";
 import { FormEvent, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -45,6 +46,7 @@ export default function ForgotPasswordPage() {
           <Link href="/" className="logo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </Link>
 
           <div className="hero">
@@ -89,6 +91,7 @@ export default function ForgotPasswordPage() {
           <div className="mobileLogo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </div>
 
           {!emailSent ? (
@@ -234,6 +237,7 @@ export default function ForgotPasswordPage() {
         .logo,
         .mobileLogo {
           display: flex;
+          flex-wrap: wrap;
           align-items: center;
           gap: 12px;
           color: inherit;

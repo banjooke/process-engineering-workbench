@@ -7,13 +7,15 @@ import * as React from 'react';
 import * as jsx from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
 
+const publicConfig = {};
+vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/site-config.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, { exports: publicConfig, encodeURIComponent });
 const authDestination = {};
 vm.runInNewContext(ts.transpileModule(readFileSync(new URL('../lib/auth-destination.ts', import.meta.url), 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText, { exports: authDestination, URL });
 
 function load(path, imports = {}, globals = {}) {
-  imports = { '@/lib/auth-destination': authDestination, '@/lib/industry-preference': { industryPreference: { clear() {} } }, ...imports };
+  imports = { '@/lib/site-config': publicConfig, '@/components/BetaBadge': { default: () => React.createElement('span', null, 'BETA') }, '@/lib/auth-destination': authDestination, '@/lib/industry-preference': { industryPreference: { clear() {} } }, ...imports };
   globals = { URL, ...(path.includes('/login/') || path.includes('/signup/') ? { window: { location: { href: 'https://workbench.test/login' } } } : {}), ...globals };
   const exports = {};
   const code = ts.transpileModule(readFileSync(new URL(path, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } }).outputText;

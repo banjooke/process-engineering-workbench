@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BetaBadge from "@/components/BetaBadge";
 import { authenticationDestination } from "@/lib/auth-destination";
 import { industryPreference } from "@/lib/industry-preference";
 import { FormEvent, useState } from "react";
@@ -48,6 +49,7 @@ export default function LoginPage() {
           <Link href="/" className="logo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </Link>
 
           <div className="hero">
@@ -83,6 +85,7 @@ export default function LoginPage() {
           <div className="mobileLogo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </div>
 
           <div className="formHeading">
@@ -229,6 +232,7 @@ export default function LoginPage() {
         .logo,
         .mobileLogo {
           display: flex;
+          flex-wrap: wrap;
           align-items: center;
           gap: 12px;
           color: inherit;

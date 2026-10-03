@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import BetaBadge from "@/components/BetaBadge";
+import { confidentialityWarning } from "@/lib/site-config";
 import { authenticationDestination } from "@/lib/auth-destination";
 import { industryPreference } from "@/lib/industry-preference";
 import { FormEvent, useState } from "react";
@@ -59,6 +61,7 @@ export default function SignUpPage() {
           <Link href="/" className="logo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </Link>
 
           <div className="hero">
@@ -125,6 +128,7 @@ export default function SignUpPage() {
           <div className="mobileLogo">
             <span className="logoMark">PE</span>
             <span>Engineering Workbench</span>
+            <BetaBadge />
           </div>
 
           <div className="formHeading">
@@ -183,6 +187,12 @@ export default function SignUpPage() {
               </div>
             </div>
 
+          <p className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm leading-6 text-teal-900">{confidentialityWarning}</p>
+
+          <p className="terms">
+            By creating an account, you acknowledge the <Link href="/terms">Beta Terms of Use</Link> and confirm that you have read the <Link href="/privacy">Privacy Notice</Link>.
+          </p>
+
             <button
               type="submit"
               className="submitButton"
@@ -210,10 +220,7 @@ export default function SignUpPage() {
             </p>
           </form>
 
-          <p className="terms">
-            By creating an account, you agree to use the platform responsibly
-            and protect your login information.
-          </p>
+
         </div>
       </section>
 
@@ -276,6 +283,7 @@ export default function SignUpPage() {
         .logo,
         .mobileLogo {
           display: flex;
+          flex-wrap: wrap;
           align-items: center;
           gap: 12px;
           color: inherit;
@@ -574,9 +582,20 @@ export default function SignUpPage() {
           text-decoration: underline;
         }
 
+        .terms :global(a) {
+          color: #115e59;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+
+        .terms :global(a:focus-visible) {
+          outline: 2px solid #0f766e;
+          outline-offset: 3px;
+        }
+
         .terms {
           margin: 26px 0 0;
-          color: #8794a5;
+          color: #475569;
           font-size: 0.76rem;
           line-height: 1.55;
           text-align: center;

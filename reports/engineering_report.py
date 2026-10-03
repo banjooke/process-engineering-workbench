@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from reports.report_notice import REPORT_DISCLAIMER
+
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -349,6 +351,7 @@ def create_pdf_report(payload: dict[str, Any]) -> Path:
 
     story: list[Any] = []
     story.append(Paragraph("Process Engineering Workbench", styles["CenterTitle"]))
+    story.append(Paragraph(REPORT_DISCLAIMER, styles["BodyText"]))
     story.append(Paragraph("Hydraulic Line Analysis - Engineering Report", styles["Heading2"]))
     story.append(Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y %H:%M')}", styles["BodyText"]))
     story.append(Paragraph("Report layout version: wrapfix-2", styles["Small"]))
@@ -523,6 +526,7 @@ def create_docx_report(payload: dict[str, Any]) -> Path:
     date_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     date_p.add_run(f"Generated: {datetime.now().strftime('%d %B %Y %H:%M')}")
 
+    document.add_paragraph(REPORT_DISCLAIMER)
     _docx_add_heading(document, "1. Design Basis")
     _docx_add_table(document, _design_basis_rows(payload))
 
@@ -661,6 +665,7 @@ def create_pump_pdf_report(payload: dict[str, Any]) -> Path:
                             title="Pump Sizing Engineering Report", author="Process Engineering Workbench")
     story: list[Any] = [
         Paragraph("Process Engineering Workbench", styles[f"PumpCenter_{uid}"]),
+        Paragraph(REPORT_DISCLAIMER, styles["BodyText"]),
         Paragraph("Pump Sizing - Engineering Report", styles["Heading2"]),
         Paragraph(f"Generated: {datetime.now().strftime('%d %B %Y %H:%M')}", styles["BodyText"]), Spacer(1, 8),
     ]
@@ -689,6 +694,7 @@ def create_pump_docx_report(payload: dict[str, Any]) -> Path:
     title=document.add_paragraph(); title.alignment=WD_ALIGN_PARAGRAPH.CENTER; run=title.add_run("Process Engineering Workbench"); run.bold=True; run.font.size=Pt(18)
     sub=document.add_paragraph(); sub.alignment=WD_ALIGN_PARAGRAPH.CENTER; sr=sub.add_run("Pump Sizing - Engineering Report"); sr.bold=True; sr.font.size=Pt(13)
     document.add_paragraph(f"Generated: {datetime.now().strftime('%d %B %Y %H:%M')}").alignment=WD_ALIGN_PARAGRAPH.CENTER
+    document.add_paragraph(REPORT_DISCLAIMER)
     _docx_add_heading(document,"1. Pump Design Basis"); _docx_add_table(document,_pump_design_basis_rows(payload))
     _docx_add_heading(document,"2. Hydraulic Line Definition"); _docx_add_table(document,_line_rows(payload),header=True)
     _docx_add_heading(document,"3. Pump Duty Results"); _docx_add_table(document,_pump_result_rows(payload))
