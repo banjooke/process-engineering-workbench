@@ -1,0 +1,273 @@
+{
+  "effluent": {
+    "ZA_GN665_general": {
+      "name": "South Africa GN 665 (2013) — General limits",
+      "version": "GN 665 of 6 Sep 2013",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "url": "https://api.acts.co.za/national-water-act-1998/n665_2__discharge_of_waste_or_water.php",
+      "limits": {
+        "COD": 75,
+        "TSS": 25,
+        "NH4N": 6,
+        "NO3N": 15,
+        "oPO4P": 10,
+        "FOG": 2.5,
+        "pH": {
+          "min": 5.5,
+          "max": 9.5
+        },
+        "FaecalColi": 1000,
+        "freeCl": 0.25
+      }
+    },
+    "ZA_GN665_special": {
+      "name": "South Africa GN 665 (2013) — Special limits",
+      "version": "GN 665 of 6 Sep 2013",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "url": "https://api.acts.co.za/national-water-act-1998/n665_2__discharge_of_waste_or_water.php",
+      "limits": {
+        "COD": 30,
+        "TSS": 10,
+        "NH4N": 2,
+        "NO3N": 1.5,
+        "oPO4P": 1,
+        "FOG": 0,
+        "pH": {
+          "min": 5.5,
+          "max": 7.5
+        },
+        "FaecalColi": 0,
+        "freeCl": 0
+      }
+    },
+    "KE_2024_environment": {
+      "name": "Kenya EMC (Water Quality) Regulations 2024 — discharge to environment",
+      "version": "L.N. 177/2024",
+      "checked": "2026-10-14",
+      "status": "to verify",
+      "url": "https://new.kenyalaw.org/akn/ke/act/ln/2024/177/eng@2024-12-06",
+      "limits": {
+        "BOD": 30,
+        "COD": 50,
+        "TSS": 30,
+        "FOG": 0,
+        "TN": 2,
+        "TP": 2,
+        "pH": {
+          "min": 6.5,
+          "max": 8.5
+        }
+      },
+      "note": "TN value looks strict; confirm against gazette"
+    },
+    "KE_2024_sewer": {
+      "name": "Kenya EMC (Water Quality) Regulations 2024 — discharge to public sewer",
+      "version": "L.N. 177/2024",
+      "checked": "2026-10-14",
+      "status": "to verify",
+      "url": "https://new.kenyalaw.org/akn/ke/act/ln/2024/177/eng@2024-12-06",
+      "limits": {
+        "BOD": 500,
+        "COD": 1000,
+        "TSS": 250,
+        "FOG": 5,
+        "NH4N": 20,
+        "PO4": 30,
+        "pH": {
+          "min": 6,
+          "max": 9
+        }
+      }
+    },
+    "NG_NESREA_FBT_2009": {
+      "name": "Nigeria NESREA Food, Beverages & Tobacco Sector Regulations 2009 (Schedule I)",
+      "version": "S.I. 2009",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "url": "https://nesrea.gov.ng/wp-content/uploads/2025/05/Food_Beverages_and_Tobacco_Sector_Regulation-2009.pdf",
+      "limits": {
+        "BOD": 30,
+        "COD": 60,
+        "TSS": 25,
+        "TDS": 500,
+        "FOG": 10,
+        "NH4N": 1,
+        "NO3N": 10,
+        "TP": 2,
+        "pH": {
+          "min": 6.5,
+          "max": 8.8
+        }
+      },
+      "note": "Schedule gives paired values (e.g. BOD 30/50, COD 60/90); the stricter value is used here. Confirm which applies to your discharge."
+    },
+    "GH_EPA_guideline": {
+      "name": "Ghana EPA effluent guideline (pre-2025) — partial",
+      "version": "Superseded by L.I. 2506 (2025) / GS 1212",
+      "checked": "2026-10-14",
+      "status": "to verify",
+      "limits": {
+        "BOD": 50,
+        "COD": 250
+      },
+      "note": "Buy GS 1212 and update before use"
+    },
+    "EU_UWWTD_secondary": {
+      "name": "EU UWWTD secondary treatment (91/271/EEC Annex I Table 1)",
+      "version": "91/271/EEC; recast (EU) 2024/3019 transposition by 2027",
+      "checked": "2026-10-14",
+      "status": "to verify",
+      "limits": {
+        "BOD": 25,
+        "COD": 125,
+        "TSS": 35
+      }
+    },
+    "EU_BREF_FDM_upper": {
+      "name": "EU Food, Drink & Milk BAT-AELs (upper end of range)",
+      "version": "Decision (EU) 2019/2031",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "limits": {
+        "COD": 100,
+        "TSS": 50,
+        "TN": 20,
+        "TP": 2
+      },
+      "note": "Permit sets the value within the range; upper end shown"
+    }
+  },
+  "drinking": {
+    "WHO_GDWQ": {
+      "name": "WHO Guidelines for Drinking-water Quality, 4th ed. + addenda",
+      "version": "2026 consolidation",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "limits": {
+        "turbidity": 1,
+        "NO3": 50,
+        "F": 1.5,
+        "As": 0.01,
+        "Ecoli": 0,
+        "Mn": 0.08
+      },
+      "note": "Turbidity < 1 NTU is an operational target; Mn health-based value to verify"
+    },
+    "NG_NIS554_2007": {
+      "name": "Nigeria NIS 554 (2007)",
+      "version": "2007 (2015 revision not checked)",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "limits": {
+        "turbidity": 5,
+        "colour": 15,
+        "pH": {
+          "min": 6.5,
+          "max": 8.5
+        },
+        "TDS": 500,
+        "Fe": 0.3,
+        "Mn": 0.2,
+        "hardness": 150,
+        "NO3": 50,
+        "F": 1.5,
+        "As": 0.01,
+        "Ecoli": 0,
+        "freeCl": {
+          "min": 0.2,
+          "max": 0.25
+        }
+      }
+    },
+    "GH_GS175": {
+      "name": "Ghana GS 175 (draft 2021)",
+      "version": "DGS 175:2021",
+      "checked": "2026-10-14",
+      "status": "to verify",
+      "limits": {
+        "turbidity": 5,
+        "colour": 5,
+        "pH": {
+          "min": 6.5,
+          "max": 8.5
+        },
+        "TDS": 500,
+        "Fe": 0.3,
+        "Mn": 0.4,
+        "hardness": 500,
+        "NO3": 50,
+        "F": 1.5,
+        "As": 0.01,
+        "Ecoli": 0
+      }
+    },
+    "ZA_SANS241_2015": {
+      "name": "South Africa SANS 241-1:2015",
+      "version": "2015",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "limits": {
+        "turbidity": 5,
+        "colour": 15,
+        "pH": {
+          "min": 5,
+          "max": 9.7
+        },
+        "TDS": 1200,
+        "Fe": 2,
+        "Mn": 0.4,
+        "NO3": 49,
+        "F": 1.5,
+        "As": 0.01,
+        "Ecoli": 0,
+        "freeCl": 5
+      },
+      "note": "Health limits; aesthetic Fe 0.3, Mn 0.1; operational turbidity 1 NTU"
+    },
+    "EU_DWD_2020": {
+      "name": "EU Drinking Water Directive (EU) 2020/2184",
+      "version": "2020/2184",
+      "checked": "2026-10-14",
+      "status": "verified",
+      "limits": {
+        "pH": {
+          "min": 6.5,
+          "max": 9.5
+        },
+        "Fe": 0.2,
+        "Mn": 0.05,
+        "NO3": 50,
+        "F": 1.5,
+        "As": 0.01,
+        "Ecoli": 0
+      }
+    }
+  },
+  "labels": {
+    "BOD": "BOD5",
+    "COD": "COD",
+    "TSS": "TSS",
+    "TDS": "TDS",
+    "FOG": "Oil & grease",
+    "NH4N": "NH3/NH4-N",
+    "NO3N": "NO3-N",
+    "TN": "Total N",
+    "TP": "Total P",
+    "oPO4P": "Ortho-P",
+    "PO4": "Phosphate",
+    "pH": "pH",
+    "FaecalColi": "Faecal coliforms (per 100 mL)",
+    "freeCl": "Free chlorine",
+    "turbidity": "Turbidity (NTU)",
+    "colour": "Colour (TCU)",
+    "Fe": "Iron",
+    "Mn": "Manganese",
+    "hardness": "Hardness (as CaCO3)",
+    "NO3": "Nitrate (as NO3)",
+    "F": "Fluoride",
+    "As": "Arsenic",
+    "Ecoli": "E. coli (per 100 mL)"
+  }
+}
