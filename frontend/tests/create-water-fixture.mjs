@@ -1,0 +1,23 @@
+// Reproducible saved-result fixture; no equations or hand-authored calculation values.
+import { writeFileSync } from 'node:fs';
+import { waterLoader, plain } from './water-test-support.mjs';
+const load = waterLoader();
+const inputs = load('lib/water-treatment/input.ts');
+const calc = load('lib/water-treatment/calculation.ts');
+const persistence = load('lib/water-treatment/persistence.ts');
+const draft = inputs.initialDraft();
+draft.flows.avgFlowOverride = '';
+draft.flows.population = '20000'; draft.flows.perCapita = '380';
+draft.predicted = { COD: '50', TSS: '20', pH: '7' }; draft.origin.BOD = 'measured';
+const session = { draft, result: calc.calculateDraft(draft), calculatedAt: '2026-10-15T12:00:00.000Z', staleReason: null };
+const payload = persistence.waterScenarioPayload('Municipal basis', 'Validated integration fixture', session);
+const waterDraft = { ...structuredClone(draft), kind: 'drinking' };
+const water = persistence.waterScenarioPayload('Water supply basis', 'Water-demand integration fixture', { draft: waterDraft, result: calc.calculateDraft(waterDraft), calculatedAt: session.calculatedAt, staleReason: null });
+const customDraft = structuredClone(draft);
+customDraft.standardIds.effluent = 'custom';
+customDraft.projectCriteria = { name: 'Project targets', jurisdiction: 'User-specified jurisdiction', limits: { COD: { min: '', max: '100' }, pH: { min: '6', max: '9' } } };
+const custom = persistence.waterScenarioPayload('Custom limits basis', 'User supplied', { draft: customDraft, result: calc.calculateDraft(customDraft), calculatedAt: session.calculatedAt, staleReason: null });
+const provisionalDraft = structuredClone(draft);
+provisionalDraft.standardIds.effluent = 'KE_2024_environment';
+const provisional = persistence.waterScenarioPayload('Provisional reference', 'Requires source verification', { draft: provisionalDraft, result: calc.calculateDraft(provisionalDraft), calculatedAt: session.calculatedAt, staleReason: null });
+writeFileSync(new URL('../../tests/fixtures/water-scenario.json', import.meta.url), JSON.stringify(plain({ wastewater: payload, water, custom, provisional }), null, 2) + '\n');

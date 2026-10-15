@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Frozen prototype sources are byte-pinned and exercised by water-treatment parity tests.
+    "lib/water-treatment/ww-engine.cjs",
+    "tests/fixtures/ww-validation.cjs",
   ]),
 ]);
 

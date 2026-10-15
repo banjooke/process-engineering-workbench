@@ -8,7 +8,7 @@ export default function ModuleWorkspace({ industry, onLaunch, onResume, children
     <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div>
       <p className="text-xs font-bold uppercase tracking-[0.2em] text-teal-700">{INDUSTRIES.find(item => item.id === industry)?.title}</p>
       <h2 id="modules-heading" className="mt-2 text-3xl font-bold text-gray-900">Engineering modules</h2>
-      <p className="mt-3 max-w-2xl text-gray-600">Choose a tool to continue into your project workflow. Your projects and scenarios remain available here.</p>
+      <p className="mt-3 max-w-2xl text-gray-600">{industry === "water-wastewater" ? "Release 1 treatment tools. Start with Design Basis & Compliance." : "Choose a tool to continue into your project workflow. Your projects and scenarios remain available here."}</p>
     </div>{onResume && <button type="button" onClick={onResume} className="rounded-lg bg-teal-800 px-4 py-3 font-semibold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Resume current work</button>}</div>
     <p id="module-availability-note" className="mb-6 text-sm text-gray-600">Additional engineering tools will be introduced progressively.</p>
     {MODULE_CATEGORIES.filter(category => modules.some(module => module.category === category)).map(category => <section key={category} aria-labelledby={`category-${MODULE_CATEGORIES.indexOf(category)}`} className="mb-8 border-t border-gray-200 pt-6">
@@ -22,6 +22,6 @@ export default function ModuleWorkspace({ industry, onLaunch, onResume, children
           <button key={module.id} type="button" onClick={() => { const action = moduleAction(module.id); if (action) onLaunch(action); }} className={`${card} transition hover:border-teal-700 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-700`}>{content}<span className="mt-5 block text-sm font-semibold text-teal-800">Open module</span></button>;
       })}</div>
     </section>)}
-    {children}
+    {industry !== "water-wastewater" && children}
   </section>;
 }

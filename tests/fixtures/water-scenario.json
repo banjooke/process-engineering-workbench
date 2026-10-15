@@ -1,0 +1,1869 @@
+{
+  "wastewater": {
+    "name": "Municipal basis",
+    "description": "Validated integration fixture",
+    "calculation_intent": "water_treatment",
+    "flow_value": 7600,
+    "flow_unit": "m³/d",
+    "inlet_pressure_bar_a": null,
+    "property_reference_pressure_bar_a": null,
+    "elements": [],
+    "fluid_config": {
+      "engineering_task": "water_treatment",
+      "water_treatment": {
+        "schema_version": "water-treatment-scenario/1",
+        "engine_version": "ww-engine/0.2.0",
+        "tool": "design_basis",
+        "draft": {
+          "kind": "effluent",
+          "mode": "design",
+          "flows": {
+            "population": "20000",
+            "perCapita": "380",
+            "industrialFlow": "0",
+            "industrialPF": "1",
+            "industrialMinFactor": "1",
+            "infiltration": "0",
+            "avgFlowOverride": "",
+            "pfManual": "2.5",
+            "maxDayFactor": "1.5",
+            "maxMonthFactor": "1.25",
+            "minFactorManual": "0.3"
+          },
+          "conc": {
+            "BOD": "140",
+            "sBOD": "70",
+            "COD": "300",
+            "sCOD": "132",
+            "TSS": "70",
+            "VSS": "60",
+            "TKN": "35",
+            "NH4N": "25",
+            "TP": "6",
+            "Alk": "140",
+            "FOG": ""
+          },
+          "loads": {
+            "BOD": "1.5",
+            "TKN": "1.5",
+            "TSS": "",
+            "TP": ""
+          },
+          "water": {
+            "population": "50000",
+            "perCapita": "120",
+            "nonDomesticPct": "20",
+            "lossesPct": "20",
+            "maxDayFactor": "1.5",
+            "peakHourFactor": "1.5",
+            "processWaterPct": "5",
+            "operatingHours": "24"
+          },
+          "origin": {
+            "BOD": "measured"
+          },
+          "pfMethod": "harmon",
+          "minMethod": "log48",
+          "standardIds": {
+            "effluent": "ZA_GN665_general",
+            "drinking": "NG_NIS554_2007"
+          },
+          "predicted": {
+            "COD": "50",
+            "TSS": "20",
+            "pH": "7"
+          },
+          "data": ""
+        },
+        "result": {
+          "kind": "effluent",
+          "basis": {
+            "flows": {
+              "Qavg": 7600,
+              "Qdom": 7600,
+              "Qind": 0,
+              "Qinf": 0,
+              "Qpeak": 20158.81640298881,
+              "Qmin": 2418.5766275993064,
+              "QmaxDay": 11400,
+              "QmaxMonth": 9500,
+              "pf": 2.6524758424985277,
+              "mmin": 0.3182337667893824,
+              "pfOverall": 2.6524758424985277
+            },
+            "pfTable": [
+              {
+                "key": "harmon",
+                "label": "Harmon (Ten States; Q Eq. 4.4)",
+                "pf": 2.6524758424985277
+              },
+              {
+                "key": "qasim45",
+                "label": "Qasim Eq. 4.5: 5 / P^0.167",
+                "pf": 3.031782173695393
+              },
+              {
+                "key": "babbitt",
+                "label": "Babbitt: 5 / P^0.2",
+                "pf": 2.7464013582652944
+              },
+              {
+                "key": "log47",
+                "label": "Qasim Eq. 4.7: log PF = −0.19 log P + 0.74",
+                "pf": 3.110314470016855
+              }
+            ],
+            "mmin": 0.3182337667893824,
+            "loads": {
+              "BOD": 1064,
+              "sBOD": 532,
+              "COD": 2280,
+              "sCOD": 1003.2,
+              "TSS": 532,
+              "VSS": 456,
+              "TKN": 266,
+              "NH4N": 190,
+              "TP": 45.6,
+              "Alk": 1064
+            },
+            "peakLoads": {
+              "BOD": 1596,
+              "TKN": 399
+            },
+            "PE": 17733.333333333336,
+            "checks": [
+              {
+                "item": "Peaking factor, peak hour / average",
+                "value": 2.652,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  4.5
+                ],
+                "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD / BOD ratio",
+                "value": 2.143,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  2.5
+                ],
+                "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD ≥ BOD (consistency)",
+                "value": 160,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "TKN ≥ NH4-N (consistency)",
+                "value": 10,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "VSS / TSS ratio",
+                "value": 0.857,
+                "unit": "–",
+                "range": [
+                  0.6,
+                  0.9
+                ],
+                "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "Nitrogen available, TKN per 100 BOD",
+                "value": 25,
+                "unit": "g N/100 g BOD",
+                "range": [
+                  5,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+                "status": "pass",
+                "note": "Below 5: nitrogen dosing (urea) likely needed"
+              },
+              {
+                "item": "Phosphorus available, TP per 100 BOD",
+                "value": 4.286,
+                "unit": "g P/100 g BOD",
+                "range": [
+                  1,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1",
+                "status": "pass",
+                "note": "Below 1: phosphorus dosing likely needed"
+              },
+              {
+                "item": "Alkalinity vs nitrification demand",
+                "value": -59.92,
+                "unit": "mg/L as CaCO3",
+                "range": [
+                  50,
+                  null
+                ],
+                "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+                "status": "warn",
+                "note": "Rough screen assuming 80% of TKN nitrified"
+              },
+              {
+                "item": "Assumed (not measured) inputs",
+                "value": 9,
+                "unit": "parameters",
+                "range": [
+                  null,
+                  null
+                ],
+                "source": "Measured vs assumed flag",
+                "status": "warn",
+                "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+              }
+            ]
+          },
+          "statistics": {
+            "n": 0
+          },
+          "compliance": {
+            "standard": {
+              "name": "South Africa GN 665 (2013) — General limits",
+              "version": "GN 665 of 6 Sep 2013",
+              "checked": "2026-10-14",
+              "status": "verified",
+              "url": "https://api.acts.co.za/national-water-act-1998/n665_2__discharge_of_waste_or_water.php",
+              "limits": {
+                "COD": 75,
+                "TSS": 25,
+                "NH4N": 6,
+                "NO3N": 15,
+                "oPO4P": 10,
+                "FOG": 2.5,
+                "pH": {
+                  "min": 5.5,
+                  "max": 9.5
+                },
+                "FaecalColi": 1000,
+                "freeCl": 0.25
+              }
+            },
+            "rows": [
+              {
+                "param": "COD",
+                "label": "COD",
+                "limit": 75,
+                "value": 50,
+                "status": "pass"
+              },
+              {
+                "param": "TSS",
+                "label": "TSS",
+                "limit": 25,
+                "value": 20,
+                "status": "pass"
+              },
+              {
+                "param": "NH4N",
+                "label": "NH3/NH4-N",
+                "limit": 6,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "NO3N",
+                "label": "NO3-N",
+                "limit": 15,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "oPO4P",
+                "label": "Ortho-P",
+                "limit": 10,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "FOG",
+                "label": "Oil & grease",
+                "limit": 2.5,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "pH",
+                "label": "pH",
+                "limit": {
+                  "min": 5.5,
+                  "max": 9.5
+                },
+                "value": 7,
+                "status": "pass"
+              },
+              {
+                "param": "FaecalColi",
+                "label": "Faecal coliforms (per 100 mL)",
+                "limit": 1000,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "freeCl",
+                "label": "Free chlorine",
+                "limit": 0.25,
+                "value": null,
+                "status": "info"
+              }
+            ]
+          },
+          "input": {
+            "kind": "effluent",
+            "mode": "design",
+            "flows": {
+              "population": "20000",
+              "perCapita": "380",
+              "industrialFlow": "0",
+              "industrialPF": "1",
+              "industrialMinFactor": "1",
+              "infiltration": "0",
+              "avgFlowOverride": "",
+              "pfManual": "2.5",
+              "maxDayFactor": "1.5",
+              "maxMonthFactor": "1.25",
+              "minFactorManual": "0.3"
+            },
+            "conc": {
+              "BOD": "140",
+              "sBOD": "70",
+              "COD": "300",
+              "sCOD": "132",
+              "TSS": "70",
+              "VSS": "60",
+              "TKN": "35",
+              "NH4N": "25",
+              "TP": "6",
+              "Alk": "140",
+              "FOG": ""
+            },
+            "loads": {
+              "BOD": "1.5",
+              "TKN": "1.5",
+              "TSS": "",
+              "TP": ""
+            },
+            "water": {
+              "population": "50000",
+              "perCapita": "120",
+              "nonDomesticPct": "20",
+              "lossesPct": "20",
+              "maxDayFactor": "1.5",
+              "peakHourFactor": "1.5",
+              "processWaterPct": "5",
+              "operatingHours": "24"
+            },
+            "origin": {
+              "BOD": "measured"
+            },
+            "pfMethod": "harmon",
+            "minMethod": "log48",
+            "standardIds": {
+              "effluent": "ZA_GN665_general",
+              "drinking": "NG_NIS554_2007"
+            },
+            "predicted": {
+              "COD": "50",
+              "TSS": "20",
+              "pH": "7"
+            },
+            "data": ""
+          }
+        },
+        "checks": [
+          {
+            "item": "Peaking factor, peak hour / average",
+            "value": 2.652,
+            "unit": "–",
+            "range": [
+              1.5,
+              4.5
+            ],
+            "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD / BOD ratio",
+            "value": 2.143,
+            "unit": "–",
+            "range": [
+              1.5,
+              2.5
+            ],
+            "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD ≥ BOD (consistency)",
+            "value": 160,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "TKN ≥ NH4-N (consistency)",
+            "value": 10,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "VSS / TSS ratio",
+            "value": 0.857,
+            "unit": "–",
+            "range": [
+              0.6,
+              0.9
+            ],
+            "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "Nitrogen available, TKN per 100 BOD",
+            "value": 25,
+            "unit": "g N/100 g BOD",
+            "range": [
+              5,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+            "status": "pass",
+            "note": "Below 5: nitrogen dosing (urea) likely needed"
+          },
+          {
+            "item": "Phosphorus available, TP per 100 BOD",
+            "value": 4.286,
+            "unit": "g P/100 g BOD",
+            "range": [
+              1,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1",
+            "status": "pass",
+            "note": "Below 1: phosphorus dosing likely needed"
+          },
+          {
+            "item": "Alkalinity vs nitrification demand",
+            "value": -59.92,
+            "unit": "mg/L as CaCO3",
+            "range": [
+              50,
+              null
+            ],
+            "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+            "status": "warn",
+            "note": "Rough screen assuming 80% of TKN nitrified"
+          },
+          {
+            "item": "Assumed (not measured) inputs",
+            "value": 9,
+            "unit": "parameters",
+            "range": [
+              null,
+              null
+            ],
+            "source": "Measured vs assumed flag",
+            "status": "warn",
+            "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+          }
+        ],
+        "calculation_note": "SI units. Domestic peaking applies to domestic flow; industrial flow uses its independent factor and infiltration is unpeaked. Positive average-flow overrides replace the component model. Daily loads use average flow and entered concentrations; peak loads use separate load factors. PE uses 60 g BOD5/person/day. Percentiles use linear interpolation; standard deviation is the sample statistic. Water capacity includes losses, process water and operating hours. No treatment removal is predicted. Unmeasured inputs are assumptions. Confirm sources, permits and applicability independently.",
+        "calculated_inputs": "{\"conc\":{\"Alk\":\"140\",\"BOD\":\"140\",\"COD\":\"300\",\"FOG\":\"\",\"NH4N\":\"25\",\"TKN\":\"35\",\"TP\":\"6\",\"TSS\":\"70\",\"VSS\":\"60\",\"sBOD\":\"70\",\"sCOD\":\"132\"},\"data\":\"\",\"flows\":{\"avgFlowOverride\":\"\",\"industrialFlow\":\"0\",\"industrialMinFactor\":\"1\",\"industrialPF\":\"1\",\"infiltration\":\"0\",\"maxDayFactor\":\"1.5\",\"maxMonthFactor\":\"1.25\",\"minFactorManual\":\"0.3\",\"perCapita\":\"380\",\"pfManual\":\"2.5\",\"population\":\"20000\"},\"kind\":\"effluent\",\"loads\":{\"BOD\":\"1.5\",\"TKN\":\"1.5\",\"TP\":\"\",\"TSS\":\"\"},\"minMethod\":\"log48\",\"mode\":\"design\",\"origin\":{\"BOD\":\"measured\"},\"pfMethod\":\"harmon\",\"predicted\":{\"COD\":\"50\",\"TSS\":\"20\",\"pH\":\"7\"},\"standardIds\":{\"drinking\":\"NG_NIS554_2007\",\"effluent\":\"ZA_GN665_general\"},\"water\":{\"lossesPct\":\"20\",\"maxDayFactor\":\"1.5\",\"nonDomesticPct\":\"20\",\"operatingHours\":\"24\",\"peakHourFactor\":\"1.5\",\"perCapita\":\"120\",\"population\":\"50000\",\"processWaterPct\":\"5\"}}",
+        "calculated_at": "2026-10-15T12:00:00.000Z",
+        "result_status": "calculated",
+        "stale": false
+      }
+    }
+  },
+  "water": {
+    "name": "Water supply basis",
+    "description": "Water-demand integration fixture",
+    "calculation_intent": "water_treatment",
+    "flow_value": 9000,
+    "flow_unit": "m³/d",
+    "inlet_pressure_bar_a": null,
+    "property_reference_pressure_bar_a": null,
+    "elements": [],
+    "fluid_config": {
+      "engineering_task": "water_treatment",
+      "water_treatment": {
+        "schema_version": "water-treatment-scenario/1",
+        "engine_version": "ww-engine/0.2.0",
+        "tool": "design_basis",
+        "draft": {
+          "kind": "drinking",
+          "mode": "design",
+          "flows": {
+            "population": "20000",
+            "perCapita": "380",
+            "industrialFlow": "0",
+            "industrialPF": "1",
+            "industrialMinFactor": "1",
+            "infiltration": "0",
+            "avgFlowOverride": "",
+            "pfManual": "2.5",
+            "maxDayFactor": "1.5",
+            "maxMonthFactor": "1.25",
+            "minFactorManual": "0.3"
+          },
+          "conc": {
+            "BOD": "140",
+            "sBOD": "70",
+            "COD": "300",
+            "sCOD": "132",
+            "TSS": "70",
+            "VSS": "60",
+            "TKN": "35",
+            "NH4N": "25",
+            "TP": "6",
+            "Alk": "140",
+            "FOG": ""
+          },
+          "loads": {
+            "BOD": "1.5",
+            "TKN": "1.5",
+            "TSS": "",
+            "TP": ""
+          },
+          "water": {
+            "population": "50000",
+            "perCapita": "120",
+            "nonDomesticPct": "20",
+            "lossesPct": "20",
+            "maxDayFactor": "1.5",
+            "peakHourFactor": "1.5",
+            "processWaterPct": "5",
+            "operatingHours": "24"
+          },
+          "origin": {
+            "BOD": "measured"
+          },
+          "pfMethod": "harmon",
+          "minMethod": "log48",
+          "standardIds": {
+            "effluent": "ZA_GN665_general",
+            "drinking": "NG_NIS554_2007"
+          },
+          "predicted": {
+            "COD": "50",
+            "TSS": "20",
+            "pH": "7"
+          },
+          "data": ""
+        },
+        "result": {
+          "kind": "drinking",
+          "water": {
+            "domestic": 6000,
+            "demand": 7200,
+            "avgProduction": 9000,
+            "maxDay": 13500,
+            "peakHour": 20250,
+            "plantCapacity": 14175,
+            "checks": [
+              {
+                "item": "Per-capita demand",
+                "value": 120,
+                "unit": "L/c/d",
+                "range": [
+                  60,
+                  250
+                ],
+                "source": "Nigeria policy 120 urban / 60 semi-urban; Kenya practice manual 75–250 urban",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "Losses (non-revenue water)",
+                "value": 20,
+                "unit": "%",
+                "range": [
+                  5,
+                  30
+                ],
+                "source": "Kenya manual includes ~20%; Mwache WTP 5% production losses",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "Process water (backwash, desludging)",
+                "value": 5,
+                "unit": "%",
+                "range": [
+                  2,
+                  5
+                ],
+                "source": "2–5% of production (Kenya manual 5%)",
+                "status": "pass",
+                "note": ""
+              }
+            ]
+          },
+          "statistics": {
+            "n": 0
+          },
+          "compliance": {
+            "standard": {
+              "name": "Nigeria NIS 554 (2007)",
+              "version": "2007 (2015 revision not checked)",
+              "checked": "2026-10-14",
+              "status": "verified",
+              "limits": {
+                "turbidity": 5,
+                "colour": 15,
+                "pH": {
+                  "min": 6.5,
+                  "max": 8.5
+                },
+                "TDS": 500,
+                "Fe": 0.3,
+                "Mn": 0.2,
+                "hardness": 150,
+                "NO3": 50,
+                "F": 1.5,
+                "As": 0.01,
+                "Ecoli": 0,
+                "freeCl": {
+                  "min": 0.2,
+                  "max": 0.25
+                }
+              }
+            },
+            "rows": [
+              {
+                "param": "turbidity",
+                "label": "Turbidity (NTU)",
+                "limit": 5,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "colour",
+                "label": "Colour (TCU)",
+                "limit": 15,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "pH",
+                "label": "pH",
+                "limit": {
+                  "min": 6.5,
+                  "max": 8.5
+                },
+                "value": 7,
+                "status": "pass"
+              },
+              {
+                "param": "TDS",
+                "label": "TDS",
+                "limit": 500,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "Fe",
+                "label": "Iron",
+                "limit": 0.3,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "Mn",
+                "label": "Manganese",
+                "limit": 0.2,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "hardness",
+                "label": "Hardness (as CaCO3)",
+                "limit": 150,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "NO3",
+                "label": "Nitrate (as NO3)",
+                "limit": 50,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "F",
+                "label": "Fluoride",
+                "limit": 1.5,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "As",
+                "label": "Arsenic",
+                "limit": 0.01,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "Ecoli",
+                "label": "E. coli (per 100 mL)",
+                "limit": 0,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "freeCl",
+                "label": "Free chlorine",
+                "limit": {
+                  "min": 0.2,
+                  "max": 0.25
+                },
+                "value": null,
+                "status": "info"
+              }
+            ]
+          },
+          "input": {
+            "kind": "drinking",
+            "mode": "design",
+            "flows": {
+              "population": "20000",
+              "perCapita": "380",
+              "industrialFlow": "0",
+              "industrialPF": "1",
+              "industrialMinFactor": "1",
+              "infiltration": "0",
+              "avgFlowOverride": "",
+              "pfManual": "2.5",
+              "maxDayFactor": "1.5",
+              "maxMonthFactor": "1.25",
+              "minFactorManual": "0.3"
+            },
+            "conc": {
+              "BOD": "140",
+              "sBOD": "70",
+              "COD": "300",
+              "sCOD": "132",
+              "TSS": "70",
+              "VSS": "60",
+              "TKN": "35",
+              "NH4N": "25",
+              "TP": "6",
+              "Alk": "140",
+              "FOG": ""
+            },
+            "loads": {
+              "BOD": "1.5",
+              "TKN": "1.5",
+              "TSS": "",
+              "TP": ""
+            },
+            "water": {
+              "population": "50000",
+              "perCapita": "120",
+              "nonDomesticPct": "20",
+              "lossesPct": "20",
+              "maxDayFactor": "1.5",
+              "peakHourFactor": "1.5",
+              "processWaterPct": "5",
+              "operatingHours": "24"
+            },
+            "origin": {
+              "BOD": "measured"
+            },
+            "pfMethod": "harmon",
+            "minMethod": "log48",
+            "standardIds": {
+              "effluent": "ZA_GN665_general",
+              "drinking": "NG_NIS554_2007"
+            },
+            "predicted": {
+              "COD": "50",
+              "TSS": "20",
+              "pH": "7"
+            },
+            "data": ""
+          }
+        },
+        "checks": [
+          {
+            "item": "Per-capita demand",
+            "value": 120,
+            "unit": "L/c/d",
+            "range": [
+              60,
+              250
+            ],
+            "source": "Nigeria policy 120 urban / 60 semi-urban; Kenya practice manual 75–250 urban",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "Losses (non-revenue water)",
+            "value": 20,
+            "unit": "%",
+            "range": [
+              5,
+              30
+            ],
+            "source": "Kenya manual includes ~20%; Mwache WTP 5% production losses",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "Process water (backwash, desludging)",
+            "value": 5,
+            "unit": "%",
+            "range": [
+              2,
+              5
+            ],
+            "source": "2–5% of production (Kenya manual 5%)",
+            "status": "pass",
+            "note": ""
+          }
+        ],
+        "calculation_note": "SI units. Domestic peaking applies to domestic flow; industrial flow uses its independent factor and infiltration is unpeaked. Positive average-flow overrides replace the component model. Daily loads use average flow and entered concentrations; peak loads use separate load factors. PE uses 60 g BOD5/person/day. Percentiles use linear interpolation; standard deviation is the sample statistic. Water capacity includes losses, process water and operating hours. No treatment removal is predicted. Unmeasured inputs are assumptions. Confirm sources, permits and applicability independently.",
+        "calculated_inputs": "{\"conc\":{\"Alk\":\"140\",\"BOD\":\"140\",\"COD\":\"300\",\"FOG\":\"\",\"NH4N\":\"25\",\"TKN\":\"35\",\"TP\":\"6\",\"TSS\":\"70\",\"VSS\":\"60\",\"sBOD\":\"70\",\"sCOD\":\"132\"},\"data\":\"\",\"flows\":{\"avgFlowOverride\":\"\",\"industrialFlow\":\"0\",\"industrialMinFactor\":\"1\",\"industrialPF\":\"1\",\"infiltration\":\"0\",\"maxDayFactor\":\"1.5\",\"maxMonthFactor\":\"1.25\",\"minFactorManual\":\"0.3\",\"perCapita\":\"380\",\"pfManual\":\"2.5\",\"population\":\"20000\"},\"kind\":\"drinking\",\"loads\":{\"BOD\":\"1.5\",\"TKN\":\"1.5\",\"TP\":\"\",\"TSS\":\"\"},\"minMethod\":\"log48\",\"mode\":\"design\",\"origin\":{\"BOD\":\"measured\"},\"pfMethod\":\"harmon\",\"predicted\":{\"COD\":\"50\",\"TSS\":\"20\",\"pH\":\"7\"},\"standardIds\":{\"drinking\":\"NG_NIS554_2007\",\"effluent\":\"ZA_GN665_general\"},\"water\":{\"lossesPct\":\"20\",\"maxDayFactor\":\"1.5\",\"nonDomesticPct\":\"20\",\"operatingHours\":\"24\",\"peakHourFactor\":\"1.5\",\"perCapita\":\"120\",\"population\":\"50000\",\"processWaterPct\":\"5\"}}",
+        "calculated_at": "2026-10-15T12:00:00.000Z",
+        "result_status": "calculated",
+        "stale": false
+      }
+    }
+  },
+  "custom": {
+    "name": "Custom limits basis",
+    "description": "User supplied",
+    "calculation_intent": "water_treatment",
+    "flow_value": 7600,
+    "flow_unit": "m³/d",
+    "inlet_pressure_bar_a": null,
+    "property_reference_pressure_bar_a": null,
+    "elements": [],
+    "fluid_config": {
+      "engineering_task": "water_treatment",
+      "water_treatment": {
+        "schema_version": "water-treatment-scenario/1",
+        "engine_version": "ww-engine/0.2.0",
+        "tool": "design_basis",
+        "draft": {
+          "kind": "effluent",
+          "mode": "design",
+          "flows": {
+            "population": "20000",
+            "perCapita": "380",
+            "industrialFlow": "0",
+            "industrialPF": "1",
+            "industrialMinFactor": "1",
+            "infiltration": "0",
+            "avgFlowOverride": "",
+            "pfManual": "2.5",
+            "maxDayFactor": "1.5",
+            "maxMonthFactor": "1.25",
+            "minFactorManual": "0.3"
+          },
+          "conc": {
+            "BOD": "140",
+            "sBOD": "70",
+            "COD": "300",
+            "sCOD": "132",
+            "TSS": "70",
+            "VSS": "60",
+            "TKN": "35",
+            "NH4N": "25",
+            "TP": "6",
+            "Alk": "140",
+            "FOG": ""
+          },
+          "loads": {
+            "BOD": "1.5",
+            "TKN": "1.5",
+            "TSS": "",
+            "TP": ""
+          },
+          "water": {
+            "population": "50000",
+            "perCapita": "120",
+            "nonDomesticPct": "20",
+            "lossesPct": "20",
+            "maxDayFactor": "1.5",
+            "peakHourFactor": "1.5",
+            "processWaterPct": "5",
+            "operatingHours": "24"
+          },
+          "origin": {
+            "BOD": "measured"
+          },
+          "pfMethod": "harmon",
+          "minMethod": "log48",
+          "standardIds": {
+            "effluent": "custom",
+            "drinking": "NG_NIS554_2007"
+          },
+          "predicted": {
+            "COD": "50",
+            "TSS": "20",
+            "pH": "7"
+          },
+          "data": "",
+          "projectCriteria": {
+            "name": "Project targets",
+            "jurisdiction": "User-specified jurisdiction",
+            "limits": {
+              "COD": {
+                "min": "",
+                "max": "100"
+              },
+              "pH": {
+                "min": "6",
+                "max": "9"
+              }
+            }
+          }
+        },
+        "result": {
+          "kind": "effluent",
+          "basis": {
+            "flows": {
+              "Qavg": 7600,
+              "Qdom": 7600,
+              "Qind": 0,
+              "Qinf": 0,
+              "Qpeak": 20158.81640298881,
+              "Qmin": 2418.5766275993064,
+              "QmaxDay": 11400,
+              "QmaxMonth": 9500,
+              "pf": 2.6524758424985277,
+              "mmin": 0.3182337667893824,
+              "pfOverall": 2.6524758424985277
+            },
+            "pfTable": [
+              {
+                "key": "harmon",
+                "label": "Harmon (Ten States; Q Eq. 4.4)",
+                "pf": 2.6524758424985277
+              },
+              {
+                "key": "qasim45",
+                "label": "Qasim Eq. 4.5: 5 / P^0.167",
+                "pf": 3.031782173695393
+              },
+              {
+                "key": "babbitt",
+                "label": "Babbitt: 5 / P^0.2",
+                "pf": 2.7464013582652944
+              },
+              {
+                "key": "log47",
+                "label": "Qasim Eq. 4.7: log PF = −0.19 log P + 0.74",
+                "pf": 3.110314470016855
+              }
+            ],
+            "mmin": 0.3182337667893824,
+            "loads": {
+              "BOD": 1064,
+              "sBOD": 532,
+              "COD": 2280,
+              "sCOD": 1003.2,
+              "TSS": 532,
+              "VSS": 456,
+              "TKN": 266,
+              "NH4N": 190,
+              "TP": 45.6,
+              "Alk": 1064
+            },
+            "peakLoads": {
+              "BOD": 1596,
+              "TKN": 399
+            },
+            "PE": 17733.333333333336,
+            "checks": [
+              {
+                "item": "Peaking factor, peak hour / average",
+                "value": 2.652,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  4.5
+                ],
+                "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD / BOD ratio",
+                "value": 2.143,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  2.5
+                ],
+                "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD ≥ BOD (consistency)",
+                "value": 160,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "TKN ≥ NH4-N (consistency)",
+                "value": 10,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "VSS / TSS ratio",
+                "value": 0.857,
+                "unit": "–",
+                "range": [
+                  0.6,
+                  0.9
+                ],
+                "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "Nitrogen available, TKN per 100 BOD",
+                "value": 25,
+                "unit": "g N/100 g BOD",
+                "range": [
+                  5,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+                "status": "pass",
+                "note": "Below 5: nitrogen dosing (urea) likely needed"
+              },
+              {
+                "item": "Phosphorus available, TP per 100 BOD",
+                "value": 4.286,
+                "unit": "g P/100 g BOD",
+                "range": [
+                  1,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1",
+                "status": "pass",
+                "note": "Below 1: phosphorus dosing likely needed"
+              },
+              {
+                "item": "Alkalinity vs nitrification demand",
+                "value": -59.92,
+                "unit": "mg/L as CaCO3",
+                "range": [
+                  50,
+                  null
+                ],
+                "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+                "status": "warn",
+                "note": "Rough screen assuming 80% of TKN nitrified"
+              },
+              {
+                "item": "Assumed (not measured) inputs",
+                "value": 9,
+                "unit": "parameters",
+                "range": [
+                  null,
+                  null
+                ],
+                "source": "Measured vs assumed flag",
+                "status": "warn",
+                "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+              }
+            ]
+          },
+          "statistics": {
+            "n": 0
+          },
+          "compliance": {
+            "standard": {
+              "name": "Project targets",
+              "version": "User-supplied project criteria",
+              "checked": "Not independently verified",
+              "status": "user supplied",
+              "limits": {
+                "COD": {
+                  "max": 100
+                },
+                "pH": {
+                  "min": 6,
+                  "max": 9
+                }
+              },
+              "note": "Jurisdiction: User-specified jurisdiction. User-entered criteria, not regulatory approval."
+            },
+            "rows": [
+              {
+                "param": "COD",
+                "label": "COD",
+                "limit": {
+                  "max": 100
+                },
+                "value": 50,
+                "status": "pass"
+              },
+              {
+                "param": "pH",
+                "label": "pH",
+                "limit": {
+                  "min": 6,
+                  "max": 9
+                },
+                "value": 7,
+                "status": "pass"
+              }
+            ]
+          },
+          "input": {
+            "kind": "effluent",
+            "mode": "design",
+            "flows": {
+              "population": "20000",
+              "perCapita": "380",
+              "industrialFlow": "0",
+              "industrialPF": "1",
+              "industrialMinFactor": "1",
+              "infiltration": "0",
+              "avgFlowOverride": "",
+              "pfManual": "2.5",
+              "maxDayFactor": "1.5",
+              "maxMonthFactor": "1.25",
+              "minFactorManual": "0.3"
+            },
+            "conc": {
+              "BOD": "140",
+              "sBOD": "70",
+              "COD": "300",
+              "sCOD": "132",
+              "TSS": "70",
+              "VSS": "60",
+              "TKN": "35",
+              "NH4N": "25",
+              "TP": "6",
+              "Alk": "140",
+              "FOG": ""
+            },
+            "loads": {
+              "BOD": "1.5",
+              "TKN": "1.5",
+              "TSS": "",
+              "TP": ""
+            },
+            "water": {
+              "population": "50000",
+              "perCapita": "120",
+              "nonDomesticPct": "20",
+              "lossesPct": "20",
+              "maxDayFactor": "1.5",
+              "peakHourFactor": "1.5",
+              "processWaterPct": "5",
+              "operatingHours": "24"
+            },
+            "origin": {
+              "BOD": "measured"
+            },
+            "pfMethod": "harmon",
+            "minMethod": "log48",
+            "standardIds": {
+              "effluent": "custom",
+              "drinking": "NG_NIS554_2007"
+            },
+            "predicted": {
+              "COD": "50",
+              "TSS": "20",
+              "pH": "7"
+            },
+            "data": "",
+            "projectCriteria": {
+              "name": "Project targets",
+              "jurisdiction": "User-specified jurisdiction",
+              "limits": {
+                "COD": {
+                  "min": "",
+                  "max": "100"
+                },
+                "pH": {
+                  "min": "6",
+                  "max": "9"
+                }
+              }
+            }
+          }
+        },
+        "checks": [
+          {
+            "item": "Peaking factor, peak hour / average",
+            "value": 2.652,
+            "unit": "–",
+            "range": [
+              1.5,
+              4.5
+            ],
+            "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD / BOD ratio",
+            "value": 2.143,
+            "unit": "–",
+            "range": [
+              1.5,
+              2.5
+            ],
+            "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD ≥ BOD (consistency)",
+            "value": 160,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "TKN ≥ NH4-N (consistency)",
+            "value": 10,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "VSS / TSS ratio",
+            "value": 0.857,
+            "unit": "–",
+            "range": [
+              0.6,
+              0.9
+            ],
+            "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "Nitrogen available, TKN per 100 BOD",
+            "value": 25,
+            "unit": "g N/100 g BOD",
+            "range": [
+              5,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+            "status": "pass",
+            "note": "Below 5: nitrogen dosing (urea) likely needed"
+          },
+          {
+            "item": "Phosphorus available, TP per 100 BOD",
+            "value": 4.286,
+            "unit": "g P/100 g BOD",
+            "range": [
+              1,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1",
+            "status": "pass",
+            "note": "Below 1: phosphorus dosing likely needed"
+          },
+          {
+            "item": "Alkalinity vs nitrification demand",
+            "value": -59.92,
+            "unit": "mg/L as CaCO3",
+            "range": [
+              50,
+              null
+            ],
+            "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+            "status": "warn",
+            "note": "Rough screen assuming 80% of TKN nitrified"
+          },
+          {
+            "item": "Assumed (not measured) inputs",
+            "value": 9,
+            "unit": "parameters",
+            "range": [
+              null,
+              null
+            ],
+            "source": "Measured vs assumed flag",
+            "status": "warn",
+            "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+          }
+        ],
+        "calculation_note": "SI units. Domestic peaking applies to domestic flow; industrial flow uses its independent factor and infiltration is unpeaked. Positive average-flow overrides replace the component model. Daily loads use average flow and entered concentrations; peak loads use separate load factors. PE uses 60 g BOD5/person/day. Percentiles use linear interpolation; standard deviation is the sample statistic. Water capacity includes losses, process water and operating hours. No treatment removal is predicted. Unmeasured inputs are assumptions. Confirm sources, permits and applicability independently.",
+        "calculated_inputs": "{\"conc\":{\"Alk\":\"140\",\"BOD\":\"140\",\"COD\":\"300\",\"FOG\":\"\",\"NH4N\":\"25\",\"TKN\":\"35\",\"TP\":\"6\",\"TSS\":\"70\",\"VSS\":\"60\",\"sBOD\":\"70\",\"sCOD\":\"132\"},\"data\":\"\",\"flows\":{\"avgFlowOverride\":\"\",\"industrialFlow\":\"0\",\"industrialMinFactor\":\"1\",\"industrialPF\":\"1\",\"infiltration\":\"0\",\"maxDayFactor\":\"1.5\",\"maxMonthFactor\":\"1.25\",\"minFactorManual\":\"0.3\",\"perCapita\":\"380\",\"pfManual\":\"2.5\",\"population\":\"20000\"},\"kind\":\"effluent\",\"loads\":{\"BOD\":\"1.5\",\"TKN\":\"1.5\",\"TP\":\"\",\"TSS\":\"\"},\"minMethod\":\"log48\",\"mode\":\"design\",\"origin\":{\"BOD\":\"measured\"},\"pfMethod\":\"harmon\",\"predicted\":{\"COD\":\"50\",\"TSS\":\"20\",\"pH\":\"7\"},\"projectCriteria\":{\"jurisdiction\":\"User-specified jurisdiction\",\"limits\":{\"COD\":{\"max\":\"100\",\"min\":\"\"},\"pH\":{\"max\":\"9\",\"min\":\"6\"}},\"name\":\"Project targets\"},\"standardIds\":{\"drinking\":\"NG_NIS554_2007\",\"effluent\":\"custom\"},\"water\":{\"lossesPct\":\"20\",\"maxDayFactor\":\"1.5\",\"nonDomesticPct\":\"20\",\"operatingHours\":\"24\",\"peakHourFactor\":\"1.5\",\"perCapita\":\"120\",\"population\":\"50000\",\"processWaterPct\":\"5\"}}",
+        "calculated_at": "2026-10-15T12:00:00.000Z",
+        "result_status": "calculated",
+        "stale": false
+      }
+    }
+  },
+  "provisional": {
+    "name": "Provisional reference",
+    "description": "Requires source verification",
+    "calculation_intent": "water_treatment",
+    "flow_value": 7600,
+    "flow_unit": "m³/d",
+    "inlet_pressure_bar_a": null,
+    "property_reference_pressure_bar_a": null,
+    "elements": [],
+    "fluid_config": {
+      "engineering_task": "water_treatment",
+      "water_treatment": {
+        "schema_version": "water-treatment-scenario/1",
+        "engine_version": "ww-engine/0.2.0",
+        "tool": "design_basis",
+        "draft": {
+          "kind": "effluent",
+          "mode": "design",
+          "flows": {
+            "population": "20000",
+            "perCapita": "380",
+            "industrialFlow": "0",
+            "industrialPF": "1",
+            "industrialMinFactor": "1",
+            "infiltration": "0",
+            "avgFlowOverride": "",
+            "pfManual": "2.5",
+            "maxDayFactor": "1.5",
+            "maxMonthFactor": "1.25",
+            "minFactorManual": "0.3"
+          },
+          "conc": {
+            "BOD": "140",
+            "sBOD": "70",
+            "COD": "300",
+            "sCOD": "132",
+            "TSS": "70",
+            "VSS": "60",
+            "TKN": "35",
+            "NH4N": "25",
+            "TP": "6",
+            "Alk": "140",
+            "FOG": ""
+          },
+          "loads": {
+            "BOD": "1.5",
+            "TKN": "1.5",
+            "TSS": "",
+            "TP": ""
+          },
+          "water": {
+            "population": "50000",
+            "perCapita": "120",
+            "nonDomesticPct": "20",
+            "lossesPct": "20",
+            "maxDayFactor": "1.5",
+            "peakHourFactor": "1.5",
+            "processWaterPct": "5",
+            "operatingHours": "24"
+          },
+          "origin": {
+            "BOD": "measured"
+          },
+          "pfMethod": "harmon",
+          "minMethod": "log48",
+          "standardIds": {
+            "effluent": "KE_2024_environment",
+            "drinking": "NG_NIS554_2007"
+          },
+          "predicted": {
+            "COD": "50",
+            "TSS": "20",
+            "pH": "7"
+          },
+          "data": ""
+        },
+        "result": {
+          "kind": "effluent",
+          "basis": {
+            "flows": {
+              "Qavg": 7600,
+              "Qdom": 7600,
+              "Qind": 0,
+              "Qinf": 0,
+              "Qpeak": 20158.81640298881,
+              "Qmin": 2418.5766275993064,
+              "QmaxDay": 11400,
+              "QmaxMonth": 9500,
+              "pf": 2.6524758424985277,
+              "mmin": 0.3182337667893824,
+              "pfOverall": 2.6524758424985277
+            },
+            "pfTable": [
+              {
+                "key": "harmon",
+                "label": "Harmon (Ten States; Q Eq. 4.4)",
+                "pf": 2.6524758424985277
+              },
+              {
+                "key": "qasim45",
+                "label": "Qasim Eq. 4.5: 5 / P^0.167",
+                "pf": 3.031782173695393
+              },
+              {
+                "key": "babbitt",
+                "label": "Babbitt: 5 / P^0.2",
+                "pf": 2.7464013582652944
+              },
+              {
+                "key": "log47",
+                "label": "Qasim Eq. 4.7: log PF = −0.19 log P + 0.74",
+                "pf": 3.110314470016855
+              }
+            ],
+            "mmin": 0.3182337667893824,
+            "loads": {
+              "BOD": 1064,
+              "sBOD": 532,
+              "COD": 2280,
+              "sCOD": 1003.2,
+              "TSS": 532,
+              "VSS": 456,
+              "TKN": 266,
+              "NH4N": 190,
+              "TP": 45.6,
+              "Alk": 1064
+            },
+            "peakLoads": {
+              "BOD": 1596,
+              "TKN": 399
+            },
+            "PE": 17733.333333333336,
+            "checks": [
+              {
+                "item": "Peaking factor, peak hour / average",
+                "value": 2.652,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  4.5
+                ],
+                "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD / BOD ratio",
+                "value": 2.143,
+                "unit": "–",
+                "range": [
+                  1.5,
+                  2.5
+                ],
+                "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "COD ≥ BOD (consistency)",
+                "value": 160,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "TKN ≥ NH4-N (consistency)",
+                "value": 10,
+                "unit": "mg/L",
+                "range": [
+                  0,
+                  null
+                ],
+                "source": "Data consistency",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "VSS / TSS ratio",
+                "value": 0.857,
+                "unit": "–",
+                "range": [
+                  0.6,
+                  0.9
+                ],
+                "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+                "status": "pass",
+                "note": ""
+              },
+              {
+                "item": "Nitrogen available, TKN per 100 BOD",
+                "value": 25,
+                "unit": "g N/100 g BOD",
+                "range": [
+                  5,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+                "status": "pass",
+                "note": "Below 5: nitrogen dosing (urea) likely needed"
+              },
+              {
+                "item": "Phosphorus available, TP per 100 BOD",
+                "value": 4.286,
+                "unit": "g P/100 g BOD",
+                "range": [
+                  1,
+                  null
+                ],
+                "source": "Nutrient balance BOD:N:P = 100:5:1",
+                "status": "pass",
+                "note": "Below 1: phosphorus dosing likely needed"
+              },
+              {
+                "item": "Alkalinity vs nitrification demand",
+                "value": -59.92,
+                "unit": "mg/L as CaCO3",
+                "range": [
+                  50,
+                  null
+                ],
+                "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+                "status": "warn",
+                "note": "Rough screen assuming 80% of TKN nitrified"
+              },
+              {
+                "item": "Assumed (not measured) inputs",
+                "value": 9,
+                "unit": "parameters",
+                "range": [
+                  null,
+                  null
+                ],
+                "source": "Measured vs assumed flag",
+                "status": "warn",
+                "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+              }
+            ]
+          },
+          "statistics": {
+            "n": 0
+          },
+          "compliance": {
+            "standard": {
+              "name": "Kenya EMC (Water Quality) Regulations 2024 — discharge to environment",
+              "version": "L.N. 177/2024",
+              "checked": "2026-10-14",
+              "status": "to verify",
+              "url": "https://new.kenyalaw.org/akn/ke/act/ln/2024/177/eng@2024-12-06",
+              "limits": {
+                "BOD": 30,
+                "COD": 50,
+                "TSS": 30,
+                "FOG": 0,
+                "TN": 2,
+                "TP": 2,
+                "pH": {
+                  "min": 6.5,
+                  "max": 8.5
+                }
+              },
+              "note": "TN value looks strict; confirm against gazette"
+            },
+            "rows": [
+              {
+                "param": "BOD",
+                "label": "BOD5",
+                "limit": 30,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "COD",
+                "label": "COD",
+                "limit": 50,
+                "value": 50,
+                "status": "warn"
+              },
+              {
+                "param": "TSS",
+                "label": "TSS",
+                "limit": 30,
+                "value": 20,
+                "status": "pass"
+              },
+              {
+                "param": "FOG",
+                "label": "Oil & grease",
+                "limit": 0,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "TN",
+                "label": "Total N",
+                "limit": 2,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "TP",
+                "label": "Total P",
+                "limit": 2,
+                "value": null,
+                "status": "info"
+              },
+              {
+                "param": "pH",
+                "label": "pH",
+                "limit": {
+                  "min": 6.5,
+                  "max": 8.5
+                },
+                "value": 7,
+                "status": "pass"
+              }
+            ]
+          },
+          "input": {
+            "kind": "effluent",
+            "mode": "design",
+            "flows": {
+              "population": "20000",
+              "perCapita": "380",
+              "industrialFlow": "0",
+              "industrialPF": "1",
+              "industrialMinFactor": "1",
+              "infiltration": "0",
+              "avgFlowOverride": "",
+              "pfManual": "2.5",
+              "maxDayFactor": "1.5",
+              "maxMonthFactor": "1.25",
+              "minFactorManual": "0.3"
+            },
+            "conc": {
+              "BOD": "140",
+              "sBOD": "70",
+              "COD": "300",
+              "sCOD": "132",
+              "TSS": "70",
+              "VSS": "60",
+              "TKN": "35",
+              "NH4N": "25",
+              "TP": "6",
+              "Alk": "140",
+              "FOG": ""
+            },
+            "loads": {
+              "BOD": "1.5",
+              "TKN": "1.5",
+              "TSS": "",
+              "TP": ""
+            },
+            "water": {
+              "population": "50000",
+              "perCapita": "120",
+              "nonDomesticPct": "20",
+              "lossesPct": "20",
+              "maxDayFactor": "1.5",
+              "peakHourFactor": "1.5",
+              "processWaterPct": "5",
+              "operatingHours": "24"
+            },
+            "origin": {
+              "BOD": "measured"
+            },
+            "pfMethod": "harmon",
+            "minMethod": "log48",
+            "standardIds": {
+              "effluent": "KE_2024_environment",
+              "drinking": "NG_NIS554_2007"
+            },
+            "predicted": {
+              "COD": "50",
+              "TSS": "20",
+              "pH": "7"
+            },
+            "data": ""
+          }
+        },
+        "checks": [
+          {
+            "item": "Peaking factor, peak hour / average",
+            "value": 2.652,
+            "unit": "–",
+            "range": [
+              1.5,
+              4.5
+            ],
+            "source": "Typical municipal range (Q Ex. 4.8; Ten States)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD / BOD ratio",
+            "value": 2.143,
+            "unit": "–",
+            "range": [
+              1.5,
+              2.5
+            ],
+            "source": "Municipal 1.9–2.5 typical; > 2.5 suggests low biodegradability (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "COD ≥ BOD (consistency)",
+            "value": 160,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "TKN ≥ NH4-N (consistency)",
+            "value": 10,
+            "unit": "mg/L",
+            "range": [
+              0,
+              null
+            ],
+            "source": "Data consistency",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "VSS / TSS ratio",
+            "value": 0.857,
+            "unit": "–",
+            "range": [
+              0.6,
+              0.9
+            ],
+            "source": "Municipal 0.7–0.85 typical (M&E Ch. 2)",
+            "status": "pass",
+            "note": ""
+          },
+          {
+            "item": "Nitrogen available, TKN per 100 BOD",
+            "value": 25,
+            "unit": "g N/100 g BOD",
+            "range": [
+              5,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1 (Q Ch. 10)",
+            "status": "pass",
+            "note": "Below 5: nitrogen dosing (urea) likely needed"
+          },
+          {
+            "item": "Phosphorus available, TP per 100 BOD",
+            "value": 4.286,
+            "unit": "g P/100 g BOD",
+            "range": [
+              1,
+              null
+            ],
+            "source": "Nutrient balance BOD:N:P = 100:5:1",
+            "status": "pass",
+            "note": "Below 1: phosphorus dosing likely needed"
+          },
+          {
+            "item": "Alkalinity vs nitrification demand",
+            "value": -59.92,
+            "unit": "mg/L as CaCO3",
+            "range": [
+              50,
+              null
+            ],
+            "source": "Residual ≥ 50–70 mg/L after 7.14 g CaCO3 per g N nitrified (M&E Ex. 8-3)",
+            "status": "warn",
+            "note": "Rough screen assuming 80% of TKN nitrified"
+          },
+          {
+            "item": "Assumed (not measured) inputs",
+            "value": 9,
+            "unit": "parameters",
+            "range": [
+              null,
+              null
+            ],
+            "source": "Measured vs assumed flag",
+            "status": "warn",
+            "note": "sBOD, COD, sCOD, TSS, VSS, TKN, NH4N, TP, Alk"
+          }
+        ],
+        "calculation_note": "SI units. Domestic peaking applies to domestic flow; industrial flow uses its independent factor and infiltration is unpeaked. Positive average-flow overrides replace the component model. Daily loads use average flow and entered concentrations; peak loads use separate load factors. PE uses 60 g BOD5/person/day. Percentiles use linear interpolation; standard deviation is the sample statistic. Water capacity includes losses, process water and operating hours. No treatment removal is predicted. Unmeasured inputs are assumptions. Confirm sources, permits and applicability independently.",
+        "calculated_inputs": "{\"conc\":{\"Alk\":\"140\",\"BOD\":\"140\",\"COD\":\"300\",\"FOG\":\"\",\"NH4N\":\"25\",\"TKN\":\"35\",\"TP\":\"6\",\"TSS\":\"70\",\"VSS\":\"60\",\"sBOD\":\"70\",\"sCOD\":\"132\"},\"data\":\"\",\"flows\":{\"avgFlowOverride\":\"\",\"industrialFlow\":\"0\",\"industrialMinFactor\":\"1\",\"industrialPF\":\"1\",\"infiltration\":\"0\",\"maxDayFactor\":\"1.5\",\"maxMonthFactor\":\"1.25\",\"minFactorManual\":\"0.3\",\"perCapita\":\"380\",\"pfManual\":\"2.5\",\"population\":\"20000\"},\"kind\":\"effluent\",\"loads\":{\"BOD\":\"1.5\",\"TKN\":\"1.5\",\"TP\":\"\",\"TSS\":\"\"},\"minMethod\":\"log48\",\"mode\":\"design\",\"origin\":{\"BOD\":\"measured\"},\"pfMethod\":\"harmon\",\"predicted\":{\"COD\":\"50\",\"TSS\":\"20\",\"pH\":\"7\"},\"standardIds\":{\"drinking\":\"NG_NIS554_2007\",\"effluent\":\"KE_2024_environment\"},\"water\":{\"lossesPct\":\"20\",\"maxDayFactor\":\"1.5\",\"nonDomesticPct\":\"20\",\"operatingHours\":\"24\",\"peakHourFactor\":\"1.5\",\"perCapita\":\"120\",\"population\":\"50000\",\"processWaterPct\":\"5\"}}",
+        "calculated_at": "2026-10-15T12:00:00.000Z",
+        "result_status": "calculated",
+        "stale": false
+      }
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { readApiError } from "@/lib/api-error";
 export type ProjectSummary = { id: number; name: string; description: string | null; created_at: string; updated_at: string };
 export type ScenarioRecord<Element = Record<string, unknown>> = {
   id: number; project_id: number; name: string; description: string | null;
-  calculation_intent: "pressure_drop" | "outlet_pressure" | "pressure_profile" | "control_valve_sizing";
+  calculation_intent: "pressure_drop" | "outlet_pressure" | "pressure_profile" | "control_valve_sizing" | "water_treatment";
   flow_value: number; flow_unit: string; inlet_pressure_bar_a: number | null;
   property_reference_pressure_bar_a: number | null; fluid_config: Record<string, unknown>;
   elements: Element[]; created_at: string; updated_at: string;

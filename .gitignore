@@ -57,3 +57,6 @@ reports/generated/
 
 # Local development database and backups
 /process_engineering_workbench.db*
+
+# Temporary prototype integration sources
+integration-source/
