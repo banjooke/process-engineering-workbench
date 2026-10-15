@@ -11,6 +11,9 @@ import {
   useState,
 } from "react";
 
+import WaterProjectWorkflow from "@/components/WaterProjectWorkflow";
+import { isWaterScenario } from "@/lib/water-treatment/persistence";
+import { downloadBlob } from "@/lib/download";
 import IndustrySelector from "@/components/IndustrySelector";
 import BetaBadge from "@/components/BetaBadge";
 import { confidentialityWarning, engineeringDisclaimer, siteConfig } from "@/lib/site-config";
@@ -601,6 +604,10 @@ const inputClass =
 
 export default function Home() {
   const workspace = useIndustryWorkspace();
+  const [waterToolOpen, setWaterToolOpen] = useState(false);
+  const waterExitGuard = useRef<() => boolean>(() => true);
+  const registerWaterExitGuard = useCallback((guard: () => boolean) => { waterExitGuard.current = guard; }, []);
+  const canLeaveWorkspace = () => workspace.industry === "water-wastewater" ? waterExitGuard.current() : wizardStep !== "control_valve" || valveExitGuard.current();
   const valveExitGuard = useRef<() => boolean>(() => true);
   const registerValveExitGuard = useCallback((guard: () => boolean) => { valveExitGuard.current = guard; }, []);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -1446,7 +1453,7 @@ export default function Home() {
     }
 
     const rows = await listScenarioRecords<LineElement>(API_BASE_URL, Number(projectId), signal);
-    const data = rows.filter((row): row is SavedScenario => !isValveScenario(row) && row.calculation_intent !== "control_valve_sizing");
+    const data = rows.filter((row): row is SavedScenario => !isValveScenario(row) && !isWaterScenario(row) && row.calculation_intent !== "control_valve_sizing");
     signal?.throwIfAborted();
     setScenarios(data);
 
@@ -3892,23 +3899,6 @@ export default function Home() {
       .replace(/_+/g, "_") || "Hydraulic_Line_Analysis";
   }
 
-  function downloadBlob(blob: Blob, filename: string) {
-    const url = window.URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.style.display = "none";
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-
-    // Do not revoke immediately. Some browsers start the file transfer
-    // asynchronously and can lose an object URL that is revoked too early.
-    window.setTimeout(() => {
-      window.URL.revokeObjectURL(url);
-    }, 1500);
-  }
-
   async function downloadEngineeringReport(
     format: "pdf" | "docx",
     scope: "auto" | "current" | "project" = "auto"
@@ -4708,9 +4698,13 @@ export default function Home() {
   }
 
   function launchModule(action: ModuleAction) {
+    if (action === "water_design_basis") {
+      setWaterToolOpen(true); workspace.enterModule(); return;
+    }
     const currentAction = wizardStep === "control_valve" ? "control_valve" : wizardStep === "tasks" ? null : engineeringTask;
     if (currentAction === action) { workspace.enterModule(); return; }
     if (wizardStep === "control_valve" && !valveExitGuard.current()) return;
+    setWaterToolOpen(false);
     if (action === "control_valve") {
       setEngineeringTask(null); setWizardStep("control_valve");
     } else {
@@ -4752,9 +4746,9 @@ export default function Home() {
   >
     Modules
   </button>
-  <button type="button" onClick={() => workspace.goHome(() => wizardStep !== "control_valve" || valveExitGuard.current())} className="rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Home</button>
+  <button type="button" onClick={() => workspace.goHome(canLeaveWorkspace)} className="rounded-lg border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700">Home</button>
 
-  <UserAccount beforeSignOut={() => wizardStep !== "control_valve" || valveExitGuard.current()} />
+  <UserAccount beforeSignOut={canLeaveWorkspace} />
 </div>
         </div>
 
@@ -4773,7 +4767,7 @@ export default function Home() {
         </>}
         {workspace.view === "modules" && workspace.industry && (
           <ModuleWorkspace industry={workspace.industry} onLaunch={launchModule}
-            onResume={wizardStep !== "tasks" ? workspace.enterModule : undefined}>
+            onResume={workspace.industry === "water-wastewater" ? (waterToolOpen ? workspace.enterModule : undefined) : wizardStep !== "tasks" ? workspace.enterModule : undefined}>
             <div className="mt-7 rounded-2xl border border-black bg-white p-6 shadow-sm">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -4842,8 +4836,11 @@ export default function Home() {
             </div>
           </ModuleWorkspace>
         )}
+        {waterToolOpen && <div hidden={workspace.view !== "module" || workspace.industry !== "water-wastewater"}>
+          <WaterProjectWorkflow apiBaseUrl={API_BASE_URL} active={workspace.view === "module" && workspace.industry === "water-wastewater"} registerExitGuard={registerWaterExitGuard} />
+        </div>}
         {/* Keep active project/scenario components mounted while browsing industries. */}
-        <div hidden={workspace.view !== "module"}>
+        <div hidden={workspace.view !== "module" || workspace.industry === "water-wastewater"}>
 
         {wizardStep !== "overview" && wizardStep !== "tasks" && wizardStep !== "control_valve" && (
         <div className="mb-7 flex flex-wrap items-center justify-center gap-2 text-sm">

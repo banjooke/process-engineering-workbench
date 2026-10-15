@@ -89,7 +89,7 @@ for (const event of ['SIGNED_OUT', 'INITIAL_SESSION']) test(`authentication loss
 });
 
 test('all seven industries have stable unique identities', () => {
-  assert.deepEqual(plain(registry.INDUSTRIES.map(row => row.title)), ['General Process Engineering', 'Pharmaceuticals', 'Food & Beverage', 'Water & Wastewater', 'Oil & Gas', 'Chemicals', 'Energy & Utilities']);
+  assert.deepEqual(plain(registry.INDUSTRIES.map(row => row.title)), ['General Process Engineering', 'Pharmaceuticals', 'Food & Beverage', 'Water and Wastewater Treatment', 'Oil & Gas', 'Chemicals', 'Energy & Utilities']);
   assert.equal(new Set(registry.INDUSTRIES.map(row => row.id)).size, 7);
   assert.equal(new Set(registry.MODULES.map(row => row.id)).size, registry.MODULES.length);
 });
@@ -101,7 +101,7 @@ test('general includes all working modules, including the existing system curve 
 });
 
 test('specialist tags remain internal and disabled workspaces expose no modules or actions', () => {
-  for (const industry of registry.INDUSTRIES.filter(row => row.id !== 'general')) {
+  for (const industry of registry.INDUSTRIES.filter(row => row.availability !== 'available')) {
     assert.equal(registry.isSelectableIndustry(industry.id), false);
     assert.equal(registry.modulesForIndustry(industry.id).length, 0);
     assert.equal(Workspace({ industry: industry.id, onLaunch: () => assert.fail('launch'), onResume: () => assert.fail('resume') }), null);
@@ -121,17 +121,17 @@ test('coming-soon cards have no launch event and working cards keep existing act
   assert.deepEqual(actions, ['pressure_drop', 'pump_sizing', 'system_curve', 'control_valve']);
 });
 
-test('only General is selectable and all six specialist cards are inert and explained', () => {
+test('General and Water are selectable and remaining specialist cards are inert and explained', () => {
   const selected = [];
   const tree = Selector({ selected: 'general', onSelect: id => selected.push(id) });
   const elements = nodes(tree), buttons = elements.filter(node => node.type === 'button');
-  assert.equal(buttons.length, 1);
+  assert.equal(buttons.length, 2);
   assert.equal(buttons[0].props['aria-pressed'], true);
   buttons[0].props.onClick(); assert.deepEqual(selected, ['general']);
-  const cards = elements.filter(node => node.props.role === 'group'); assert.equal(cards.length, 6);
+  const cards = elements.filter(node => node.props.role === 'group'); assert.equal(cards.length, 5);
   for (const [index, card] of cards.entries()) {
     assert.equal(card.props['aria-disabled'], 'true');
-    assert.equal(card.props['aria-labelledby'], `${registry.INDUSTRIES[index + 1].id}-title`);
+    assert.equal(card.props['aria-labelledby'], `${registry.INDUSTRIES.filter(row => row.availability !== 'available')[index].id}-title`);
     assert.equal(card.props['aria-describedby'], 'industry-availability-note');
     for (const node of nodes(card)) {
       assert.ok(!['button', 'a'].includes(node.type));
@@ -155,7 +155,7 @@ test('disabled selections never write storage or notify subscribers', () => {
   let writes = 0, changes = 0;
   const store = preference.createIndustryPreference(() => ({ getItem: () => 'general', setItem: () => writes++ }));
   store.subscribe(() => changes++);
-  for (const industry of registry.INDUSTRIES.slice(1)) store.select(industry.id);
+  for (const industry of registry.INDUSTRIES.filter(row => row.availability !== 'available')) store.select(industry.id);
   assert.equal(store.getSnapshot(), 'general'); assert.equal(writes, 0); assert.equal(changes, 0);
 });
 
@@ -169,7 +169,7 @@ test('valid preference restored only after client subscription and persisted acr
   assert.equal(reloaded.getSnapshot(), 'general');
 });
 
-for (const value of [null, '', 'obsolete', 'constructor', '{"industry":"general"}', ...registry.INDUSTRIES.slice(1).map(row => row.id)]) test(`invalid stored industry safely falls back: ${value}`, () => {
+for (const value of [null, '', 'obsolete', 'constructor', '{"industry":"general"}', ...registry.INDUSTRIES.filter(row => row.availability !== 'available').map(row => row.id)]) test(`invalid stored industry safely falls back: ${value}`, () => {
   const store = preference.createIndustryPreference(() => storage(value)); store.subscribe(() => {}); assert.equal(store.getSnapshot(), null);
 });
 
@@ -196,12 +196,12 @@ test('industry switches and module/workspace navigation preserve the active work
   assert.equal(current().view, 'industries'); current().chooseIndustry('general'); assert.equal(current().view, 'modules');
   current().enterModule(); assert.equal(current().view, 'module'); current().goHome(() => false); assert.equal(current().view, 'module');
   current().goHome(() => true); assert.equal(current().view, 'industries'); assert.equal(current().industry, 'general');
-  for (const industry of registry.INDUSTRIES.slice(1)) { current().chooseIndustry(industry.id); assert.equal(current().industry, 'general'); assert.equal(current().view, 'industries'); }
+  for (const industry of registry.INDUSTRIES.filter(row => row.availability !== 'available')) { current().chooseIndustry(industry.id); assert.equal(current().industry, 'general'); assert.equal(current().view, 'industries'); }
   current().chooseIndustry('general'); assert.equal(current().view, 'modules');
   current().enterModule(); assert.equal(current().view, 'module'); current().showModules(); assert.equal(current().view, 'modules');
   const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
-  assert.match(source, /<div hidden=\{workspace.view !== "module"\}>/);
-  assert.match(source, /onResume=\{wizardStep !== "tasks" \? workspace.enterModule : undefined\}/);
+  assert.match(source, /<div hidden=\{workspace.view !== "module" \|\| workspace.industry === "water-wastewater"\}>/);
+  assert.match(source, /onResume=\{workspace.industry === "water-wastewater"/);
   assert.match(source, /onExit=\{\(\) => workspace.showModules\(\)\}/);
   assert.match(source, /<UserAccount beforeSignOut=/);
   assert.doesNotMatch(source, /projects.filter\([^)]*industry/);
@@ -212,7 +212,7 @@ function launcher(overrides = {}) {
   const start = source.indexOf('  function launchModule('), end = source.indexOf('  // ===', start);
   const code = ts.transpileModule(source.slice(start, end), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const calls = [], context = { wizardStep: 'tasks', engineeringTask: null, workspace: { enterModule: () => calls.push(['enter']) }, valveExitGuard: { current: () => true },
-    setEngineeringTask: value => calls.push(['task', value]), setWizardStep: value => calls.push(['step', value]), setAnalysisType: value => calls.push(['analysis', value]), setPumpResult: value => calls.push(['pumpResult', value]), window: { scrollTo() {} }, ...overrides };
+    setEngineeringTask: value => calls.push(['task', value]), setWizardStep: value => calls.push(['step', value]), setAnalysisType: value => calls.push(['analysis', value]), setPumpResult: value => calls.push(['pumpResult', value]), setWaterToolOpen() {}, window: { scrollTo() {} }, ...overrides };
   vm.createContext(context); vm.runInContext(code, context);
   return { calls, launch: context.launchModule };
 }
@@ -230,7 +230,7 @@ test('resuming a module does not reset inputs; leaving a valve module respects i
 test('Home is guarded and preserves account controls', () => {
   const source = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Change industry/);
-  assert.ok(source.includes('onClick={() => workspace.goHome(() => wizardStep !== "control_valve" || valveExitGuard.current())}'));
+  assert.ok(source.includes('onClick={() => workspace.goHome(canLeaveWorkspace)}'));
   assert.match(source, />Home<\/button>/);
   assert.match(source, /<UserAccount beforeSignOut=/);
 });

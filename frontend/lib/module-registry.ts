@@ -2,13 +2,13 @@ export const INDUSTRIES = [
   { id: "general", title: "General Process Engineering", description: "A complete workspace for everyday process design and analysis.", availability: "available", mark: "01" },
   { id: "pharmaceuticals", title: "Pharmaceuticals", description: "Process development, batch operations and reliable fluid handling.", availability: "coming-soon", mark: "02" },
   { id: "food-beverage", title: "Food & Beverage", description: "Tools for liquid processing, mixing and thermal operations.", availability: "coming-soon", mark: "03" },
-  { id: "water-wastewater", title: "Water & Wastewater", description: "Hydraulic systems, treatment processes and utility networks.", availability: "coming-soon", mark: "04" },
+  { id: "water-wastewater", title: "Water and Wastewater Treatment", description: "Design basis, treatment processes and compliance screening.", availability: "available", mark: "04" },
   { id: "oil-gas", title: "Oil & Gas", description: "Liquid transport, process equipment and utility systems.", availability: "coming-soon", mark: "05" },
   { id: "chemicals", title: "Chemicals", description: "Fluid systems, equipment sizing and process development.", availability: "coming-soon", mark: "06" },
   { id: "energy-utilities", title: "Energy & Utilities", description: "Liquid circulation, heat transfer and plant utilities.", availability: "coming-soon", mark: "07" },
 ] as const;
 export type IndustryId = typeof INDUSTRIES[number]["id"];
-export type ModuleAction = "pressure_drop" | "pump_sizing" | "control_valve" | "system_curve";
+export type ModuleAction = "pressure_drop" | "pump_sizing" | "control_valve" | "system_curve" | "water_design_basis";
 export const MODULE_CATEGORIES = ["Fluid Flow & Hydraulics", "Flow Control & Instrumentation", "Heat Transfer", "Equipment & Vessels", "Process Operations & Scale-Up", "Process Safety", "Industry Tools"] as const;
 export type ModuleCategory = typeof MODULE_CATEGORIES[number];
 type ModuleBase = { id: string; title: string; description: string; industries: readonly IndustryId[]; category: ModuleCategory };
@@ -31,7 +31,16 @@ export const MODULES: readonly ModuleDefinition[] = [
   { id: "water-treatment", title: "Water Treatment Calculations", description: "A future collection of treatment-process calculations.", industries: ["general", "water-wastewater", "energy-utilities"], category: "Industry Tools", availability: "coming-soon", action: null, comingSoonLabel: "Coming soon" },
   { id: "pharmaceutical-tools", title: "Pharmaceutical Process Tools", description: "A future collection for pharmaceutical process development.", industries: ["general", "pharmaceuticals"], category: "Industry Tools", availability: "coming-soon", action: null, comingSoonLabel: "Coming soon" },
 ];
+export const WATER_MODULES: readonly ModuleDefinition[] = [
+  { id: "water-design-basis", title: "Design Basis & Compliance", description: "Establish flows, pollutant loads, water demand and reference-standard comparisons.", industries: ["water-wastewater"], category: "Industry Tools", availability: "available", action: "water_design_basis" },
+  ...[
+    ["water-activated-sludge", "Activated Sludge, Aeration & Blower"],
+    ["water-clarifiers", "Settling Tanks & Clarifiers"],
+    ["water-chemical-dosing", "Chemical Dosing & Storage"],
+    ["water-disinfection", "Disinfection"],
+  ].map(([id, title]): ModuleDefinition => ({ id, title, description: "Planned for a later treatment-workspace release.", industries: ["water-wastewater"], category: "Industry Tools", availability: "coming-soon", action: null, comingSoonLabel: "Coming soon" })),
+];
 export const isIndustryId = (value: unknown): value is IndustryId => INDUSTRIES.some(industry => industry.id === value);
 export const isSelectableIndustry = (value: unknown): value is IndustryId => INDUSTRIES.some(industry => industry.id === value && industry.availability === "available");
-export const modulesForIndustry = (industry: IndustryId) => isSelectableIndustry(industry) ? MODULES.filter(module => module.industries.includes(industry)) : [];
-export function moduleAction(id: string): ModuleAction | null { return MODULES.find(module => module.id === id)?.action ?? null; }
+export const modulesForIndustry = (industry: IndustryId) => industry === "water-wastewater" ? WATER_MODULES : isSelectableIndustry(industry) ? MODULES.filter(module => module.industries.includes(industry)) : [];
+export function moduleAction(id: string): ModuleAction | null { return [...MODULES, ...WATER_MODULES].find(module => module.id === id)?.action ?? null; }

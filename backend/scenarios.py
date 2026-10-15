@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from database.db import get_session
 from database.models import Project, Scenario
 from backend.auth import get_current_user_id
+from backend.water_documents import TASK as WATER_TASK, prepare_document
 
 
 router = APIRouter(tags=["Scenarios"])
@@ -25,6 +26,7 @@ class ScenarioPayload(BaseModel):
         "outlet_pressure",
         "pressure_profile",
         "control_valve_sizing",
+        "water_treatment",
     ] = "pressure_drop"
     flow_value: float = Field(ge=0)
     flow_unit: str = "m³/h"
@@ -36,6 +38,22 @@ class ScenarioPayload(BaseModel):
 
     @model_validator(mode="after")
     def validate_task_flow(self):
+        water = self.fluid_config.get("engineering_task") == WATER_TASK
+        if water != (self.calculation_intent == WATER_TASK):
+            raise ValueError("Water-treatment scenarios require matching task and calculation intent.")
+        if water:
+            document = prepare_document(self.fluid_config.get("water_treatment"))
+            self.fluid_config = {"engineering_task": WATER_TASK, "water_treatment": document}
+            if document.get("result") is not None and self.flow_value <= 0:
+                raise ValueError("A calculated water-treatment scenario requires positive flow.")
+            if document.get("result") is not None:
+                result = document["result"]
+                saved_flow = result["basis"]["flows"]["Qavg"] if "basis" in result else result["water"]["avgProduction"]
+                if self.flow_value != saved_flow:
+                    raise ValueError("Scenario flow must match the saved Design Basis result.")
+            if self.flow_unit != "m³/d" or self.elements:
+                raise ValueError("Water-treatment scenarios require SI daily flow units and no hydraulic elements.")
+            return self
         valve = self.fluid_config.get("engineering_task") == "control_valve_sizing"
         if valve != (self.calculation_intent == "control_valve_sizing"):
             raise ValueError("Control-valve scenarios require matching engineering task and calculation intent.")
@@ -200,7 +218,7 @@ def update_scenario(
     scenario = _get_scenario(project_id, scenario_id, session)
     existing_task = json.loads(scenario.fluid_config_json).get("engineering_task")
     incoming_task = payload.fluid_config.get("engineering_task")
-    if existing_task != incoming_task and "control_valve_sizing" in (existing_task, incoming_task):
+    if existing_task != incoming_task and ({existing_task, incoming_task} & {"control_valve_sizing", WATER_TASK}):
         raise HTTPException(status_code=409, detail="A scenario cannot be changed to another engineering task. Create a new scenario instead.")
 
     scenario.name = payload.name.strip()
